@@ -24,12 +24,14 @@ The last three are open PRs.
 | **Restore points** | **Tagged before step 2:** npmatch [`v0.1.1`](https://github.com/Nonprofit-Open-Data-Collective/npmatch/releases/tag/v0.1.1) (`6e33327`) and matchdb [`v0.1.1`](https://github.com/Nonprofit-Open-Data-Collective/matchdb/releases/tag/v0.1.1) (`0f9cba2`), both with this signature. Pin both, in renv or with `@v0.1.1`, to reproduce anything from before the move. |
 | **2. npmatch imports npnormalize** | **Done.** [npmatch#22](https://github.com/Nonprofit-Open-Data-Collective/npmatch/pull/22) merged on 2026-10-28; npmatch is now 0.1.1.9000, and NEWS says the next release is 0.2.0. npmatch's tests pass (169). With it installed, these suites pass unchanged: matchdb (211, with the three skips below), pfmatch (112), and networked990 (50; its 4 errors are a missing `synthid` package, and appear with npmatch 0.1.1 too). The normalizer now lives only here, so the freeze on editing it in npmatch is over. |
 | **npnormalize 0.1.1** | **Done.** [npnormalize#4](https://github.com/Nonprofit-Open-Data-Collective/npnormalize/pull/4), tagged `v0.1.1`. It exports `np_unit_id()`, the public suite-id function step 3 needs. The signature is unchanged. |
-| **3. matchdb imports npnormalize** | **Ready to start.** Its prerequisites are in: step 2 and npnormalize 0.1.1. The checklist is matchdb `dev/PLAN.md` Phase 6, plus the findings below. matchdb should require `npnormalize (>= 0.1.1)`. |
+| **3. matchdb imports npnormalize** | **Done.** [matchdb#25](https://github.com/Nonprofit-Open-Data-Collective/matchdb/pull/25) merged on 2026-10-28 (`df48507`). matchdb requires `npnormalize (>= 0.1.1)`, calls `np_addr_key()` and `np_unit_id()` directly, only suggests npmatch, and records `npnormalize_version` in its stamps. Its tests pass (215, none skipped), and `R CMD check` gives 0 errors and 0 warnings. |
 | **4. npmatch gets its reference from matchdb** | **Not started.** It needs a decision first: import matchdb, or only suggest it. |
 | **5. Downstream** | Optional. pfmatch and networked990 work unchanged through npmatch's re-exports. Their notes say what switching would mean. |
 
 **Found while doing step 2** (for step 3):
-* **matchdb looks for some npmatch internals by name.** `md_place_key()` and
+* **matchdb looked for some npmatch internals by name.** *Resolved in step 3,*
+  which removed the lookup and matchdb's copies and re-enabled the three tests.
+  `md_place_key()` and
   `md_unit_id()` (in `md-places.R`, through `.md_np_fn()`) look for npmatch's
   internal `.np_addr_key` and `.np_unit_id`, and use matchdb's own copies when
   those are missing. Once step 2 merges they are missing, so matchdb uses its
