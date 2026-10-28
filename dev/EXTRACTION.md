@@ -4,6 +4,44 @@
 every function name and body unchanged, so its signature stays
 `v1-3e7b9f9d59bbb19e` and every published matchdb build stays usable.
 
+## Status
+
+*Updated 2026-10-28.* This file is the one place to check progress. The other
+repositories carry short notes that point here:
+* matchdb: `dev/PLAN.md` §9 and Phase 6;
+* pfmatch: `dev/NPNORMALIZE.md`;
+* networked990: `dev/NPNORMALIZE.md`.
+
+| step | status |
+|---|---|
+| **1. npnormalize 0.1.0** | **Done.** [npnormalize#1](https://github.com/Nonprofit-Open-Data-Collective/npnormalize/pull/1) merged. `R CMD check` passed on GitHub on five platforms. A test pins the signature at `v1-3e7b9f9d59bbb19e`. [#2](https://github.com/Nonprofit-Open-Data-Collective/npnormalize/pull/2) added the pkgdown site. |
+| **Restore points** | **Tagged before step 2:** npmatch [`v0.1.1`](https://github.com/Nonprofit-Open-Data-Collective/npmatch/releases/tag/v0.1.1) (`6e33327`) and matchdb [`v0.1.1`](https://github.com/Nonprofit-Open-Data-Collective/matchdb/releases/tag/v0.1.1) (`0f9cba2`), both with this signature. Pin both, in renv or with `@v0.1.1`, to reproduce anything from before the move. |
+| **2. npmatch imports npnormalize** | **Open:** [npmatch#22](https://github.com/Nonprofit-Open-Data-Collective/npmatch/pull/22), version 0.1.1.9000; NEWS says the next release is 0.2.0. npmatch's tests pass (169). With that branch installed, these suites pass unchanged: matchdb (211), pfmatch (112), and networked990 (50; its 4 errors are a missing `synthid` package, and appear with npmatch 0.1.1 too). **Normalizer edits in npmatch stay frozen until it merges.** |
+| **3. matchdb imports npnormalize** | **Not started.** It waits for step 2. The checklist is matchdb `dev/PLAN.md` Phase 6, plus the findings below. |
+| **4. npmatch gets its reference from matchdb** | **Not started.** It needs a decision first: import matchdb, or only suggest it. |
+| **5. Downstream** | Optional. pfmatch and networked990 work unchanged through npmatch's re-exports. Their notes say what switching would mean. |
+
+**Found while doing step 2** (for step 3):
+* **matchdb looks for some npmatch internals by name.** `md_place_key()` and
+  `md_unit_id()` (in `md-places.R`, through `.md_np_fn()`) look for npmatch's
+  internal `.np_addr_key` and `.np_unit_id`, and use matchdb's own copies when
+  those are missing. Once step 2 merges they are missing, so matchdb uses its
+  copies:
+  * **Results don't change.** The copies agree with npnormalize's functions on
+    every distinct value in the database: 71,803 suite values and 6,023,439
+    street-plus-ZIP keys.
+  * **But three matchdb tests skip** until step 3, because they compare against
+    those internals: `test-light-key.R`, `test-parse-step5.R` and
+    `test-places.R`. Step 3 should point `.md_np_fn()` and these tests at
+    npnormalize.
+* **npnormalize exports `np_addr_key()` but no suite-id function.** Step 3 needs
+  one: either a thin exported `np_unit_id()` wrapper in npnormalize (outside the
+  signature, like the other four), or tests that compare through
+  `np_normalize()`'s `street_unit_id` column. The wrapper is simpler, and needs
+  a small npnormalize release first.
+* **`test-equivalence.R` will become trivially true** once step 2 merges, since
+  npmatch's functions will be npnormalize's. It can be removed then.
+
 ## Why
 
 npmatch, matchdb and pfmatch all depend on one contract: how a string becomes
