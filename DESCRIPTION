@@ -13,7 +13,8 @@ Description: Turns organization names and addresses into matchable keys:
     unchanged out of 'npmatch', which uses it for matching, as does 'matchdb',
     which stores its keys.
 License: MIT + file LICENSE
-URL: https://github.com/Nonprofit-Open-Data-Collective/npnormalize
+URL: https://github.com/Nonprofit-Open-Data-Collective/npnormalize,
+    https://nonprofit-open-data-collective.github.io/npnormalize/
 BugReports: https://github.com/Nonprofit-Open-Data-Collective/npnormalize/issues
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
@@ -34,3 +35,4 @@ Suggests:
 Remotes:
     Nonprofit-Open-Data-Collective/npmatch
 Config/testthat/edition: 3
+Config/Needs/website: Nonprofit-Open-Data-Collective/pkgstyle
