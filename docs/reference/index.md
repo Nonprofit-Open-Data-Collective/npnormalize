@@ -37,8 +37,9 @@ Tokenizers, stopwords and the rule tables the keys are built from.
 - [`np_tokenize()`](https://nonprofit-open-data-collective.github.io/npnormalize/reference/np_tokenize.md)
   [`np_doc_freq()`](https://nonprofit-open-data-collective.github.io/npnormalize/reference/np_tokenize.md)
   [`np_addr_key()`](https://nonprofit-open-data-collective.github.io/npnormalize/reference/np_tokenize.md)
+  [`np_unit_id()`](https://nonprofit-open-data-collective.github.io/npnormalize/reference/np_tokenize.md)
   [`np_state_abb()`](https://nonprofit-open-data-collective.github.io/npnormalize/reference/np_tokenize.md)
-  : Internals npmatch's matching code calls
+  : Internals npmatch and matchdb call
 - [`np_stopwords()`](https://nonprofit-open-data-collective.github.io/npnormalize/reference/np_stopwords.md)
   : Blocking stopwords
 - [`np_name_rules()`](https://nonprofit-open-data-collective.github.io/npnormalize/reference/np_name_rules.md)

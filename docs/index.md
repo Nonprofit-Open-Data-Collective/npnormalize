@@ -14,6 +14,7 @@ error. This package holds that code in one place, and fingerprints it.
 ## Install
 
 ``` r
+
 # install.packages("remotes")
 remotes::install_github("Nonprofit-Open-Data-Collective/npnormalize")
 ```
@@ -21,6 +22,7 @@ remotes::install_github("Nonprofit-Open-Data-Collective/npnormalize")
 ## Use
 
 ``` r
+
 library(npnormalize)
 
 d <- data.frame(name   = c("The Children's Museum of NH", "St. Luke's Hospital Fdn, Inc."),
@@ -67,6 +69,7 @@ as federated, shared, building or cluster.
 ## The signature
 
 ``` r
+
 np_normalize_signature()
 #> [1] "v1-3e7b9f9d59bbb19e"
 ```

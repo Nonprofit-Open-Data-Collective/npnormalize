@@ -28,6 +28,8 @@ Useful links:
 
 - <https://github.com/Nonprofit-Open-Data-Collective/npnormalize>
 
+- <https://nonprofit-open-data-collective.github.io/npnormalize/>
+
 - Report bugs at
   <https://github.com/Nonprofit-Open-Data-Collective/npnormalize/issues>
 
