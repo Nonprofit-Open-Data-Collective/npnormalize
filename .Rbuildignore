@@ -4,3 +4,6 @@
 ^.*\.Rproj$
 ^\.Rproj\.user$
 ^\.claude$
+^_pkgdown\.yml$
+^docs$
+^pkgdown$
