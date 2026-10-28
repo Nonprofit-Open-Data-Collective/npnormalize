@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">npnormalize</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -39,6 +39,13 @@
     </div>
 
     <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.1.1" id="npnormalize-011">npnormalize 0.1.1<a class="anchor" aria-label="anchor" href="#npnormalize-011"></a></h2>
+<ul><li>New exported <code><a href="../reference/np_tokenize.html">np_unit_id()</a></code>. It reduces a suite as <code><a href="../reference/np_normalize.html">np_normalize()</a></code> writes it in <code>street_unit</code> (<code>"STE 300"</code>, <code>"# 300"</code>, <code>"STE D-2"</code>) to its identifier (<code>"300"</code>, <code>"300"</code>, <code>"D2"</code>), which is the <code>street_unit_id</code> column.
+<ul><li>matchdb’s <code>md_unit_id()</code> needs a public function for this, because it can no longer find npmatch’s internal <code>.np_unit_id()</code> once npmatch imports this package (step 3 of <code>dev/EXTRACTION.md</code>).</li>
+<li>Like the other four wrappers, it adds nothing of its own, so the signature is unchanged: <code><a href="../reference/np_normalize_signature.html">np_normalize_signature()</a></code> is still <code>v1-3e7b9f9d59bbb19e</code>.</li>
+</ul></li>
+</ul></div>
+    <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.1.0" id="npnormalize-010">npnormalize 0.1.0<a class="anchor" aria-label="anchor" href="#npnormalize-010"></a></h2>
 <ul><li>First release. npmatch’s normalizer moved into its own package, every function name and body unchanged (<code>dev/extract-from-npmatch.R</code>, from <code>npmatch@de52bb9</code>):
 <ul><li>the rule tables;</li>
@@ -53,7 +60,8 @@
 <code><a href="../reference/np_normalize_signature.html">np_normalize_signature()</a></code> is <code>v1-3e7b9f9d59bbb19e</code>, as it was in npmatch, and a test pins it.</li>
 <li>New exported wrappers for the internals npmatch’s matching code calls: <code><a href="../reference/np_tokenize.html">np_tokenize()</a></code>, <code><a href="../reference/np_tokenize.html">np_doc_freq()</a></code>, <code><a href="../reference/np_tokenize.html">np_addr_key()</a></code> and <code><a href="../reference/np_tokenize.html">np_state_abb()</a></code>. They are not part of the signature.</li>
 </ul></div>
-  </main></div>
+  </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
+    </nav></aside></div>
 
 
     <footer><div class="pkgdown-footer-left">
