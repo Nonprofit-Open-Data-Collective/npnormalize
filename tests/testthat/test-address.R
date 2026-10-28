@@ -127,6 +127,18 @@ test_that("np_addr_key() is the key np_addr_freq() counts on, blank for a PO box
                c("430 W 7TH AVE 99501", "", ""))
 })
 
+test_that("np_unit_id() is the identifier np_normalize() puts in street_unit_id", {
+  # the wrapper matchdb's md_unit_id() calls: one office however the suite is
+  # written, and NA where there is none
+  expect_equal(np_unit_id(c("STE 300", "# 300", "STE D-2", "FL 2", NA, "")),
+               c("300", "300", "D2", "2", NA, NA))
+  d <- np_normalize(np_test_frame(.id = as.character(1:5), name = "ACME FUND",
+    street = c("1 A St Ste 300", "1 A St Suite 300", "1 A St #300", "1 A St Ste D-2", "1 A St"),
+    state = "TX"))
+  expect_identical(np_unit_id(d$street_unit), d$street_unit_id)
+  expect_identical(np_unit_id(d$street_unit), .np_unit_id(d$street_unit))
+})
+
 test_that("np_state_abb() maps names and codes to two letters", {
   expect_equal(np_state_abb(c("Texas", "tx", "DC", "", "Narnia")), c("TX", "TX", "DC", NA, NA))
 })

@@ -26,6 +26,7 @@ signature it gives is the one npmatch gave.
 Useful links:
 \itemize{
   \item \url{https://github.com/Nonprofit-Open-Data-Collective/npnormalize}
+  \item \url{https://nonprofit-open-data-collective.github.io/npnormalize/}
   \item Report bugs at \url{https://github.com/Nonprofit-Open-Data-Collective/npnormalize/issues}
 }
 
