@@ -4,14 +4,17 @@
 \alias{np_tokenize}
 \alias{np_doc_freq}
 \alias{np_addr_key}
+\alias{np_unit_id}
 \alias{np_state_abb}
-\title{Internals npmatch's matching code calls}
+\title{Internals npmatch and matchdb call}
 \usage{
 np_tokenize(frame, token_col, stopwords, min_token_len, concat_adjacent)
 
 np_doc_freq(row, token)
 
 np_addr_key(street_keys, zip5 = NULL)
+
+np_unit_id(unit)
 
 np_state_abb(state)
 }
@@ -30,18 +33,23 @@ np_state_abb(state)
 
 \item{street_keys, zip5}{Street keys and ZIP codes from \code{\link[=np_normalize]{np_normalize()}}.}
 
+\item{unit}{Suites as \code{\link[=np_normalize]{np_normalize()}} writes them in \code{street_unit}
+(\code{"STE 300"}, \code{"FL 2"}, \code{"# 12"}).}
+
 \item{state}{State names or codes.}
 }
 \value{
 \code{np_tokenize()}: a list of base and concatenated token tables.
 \code{np_doc_freq()}: a named numeric vector of row counts per token.
-\code{np_addr_key()}: a character vector of address keys. \code{np_state_abb()}: a
-character vector of two-letter codes, \code{NA} where none applies.
+\code{np_addr_key()}: a character vector of address keys. \code{np_unit_id()}: a
+character vector of suite identifiers, \code{NA} where there is none.
+\code{np_state_abb()}: a character vector of two-letter codes, \code{NA} where none
+applies.
 }
 \description{
-Thin, exported wrappers around four internal helpers, so npmatch's blocking,
-comparison and geography code can call them without reaching into this
-package's internals. Most users never call these.
+Thin, exported wrappers around five internal helpers. npmatch's blocking,
+comparison and geography code, and matchdb's place keys, call these instead
+of reaching into this package's internals. Most users never call them.
 }
 \details{
 \itemize{
@@ -50,6 +58,11 @@ package's internals. Most users never call these.
 \item \code{np_doc_freq()} counts, for each token, the rows it appears in.
 \item \code{np_addr_key()} builds the address key \code{\link[=np_addr_freq]{np_addr_freq()}} counts on: the
 street key and ZIP, blank for a PO box.
+\item \code{np_unit_id()} reduces a suite as written to its identifier: the
+designator and separators are dropped, so \code{"STE 300"}, \code{"Suite 300"} and
+\code{"# 300"} all give \code{"300"}, and \code{"STE D-2"} gives \code{"D2"}. This is the
+\code{street_unit_id} column \code{\link[=np_normalize]{np_normalize()}} adds, computed from
+\code{street_unit}.
 \item \code{np_state_abb()} maps a state name or code to its two-letter code.
 }
 

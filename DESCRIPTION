@@ -1,6 +1,6 @@
 Package: npnormalize
 Title: Normalize Nonprofit Names and Addresses for Record Linkage
-Version: 0.1.0
+Version: 0.1.1
 Authors@R:
     person("Jesse", "Lecy", email = "jdlecy@gmail.com", role = c("aut", "cre"))
 Description: Turns organization names and addresses into matchable keys:
