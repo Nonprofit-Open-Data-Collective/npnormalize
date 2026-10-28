@@ -1,0 +1,36 @@
+Package: npnormalize
+Title: Normalize Nonprofit Names and Addresses for Record Linkage
+Version: 0.1.0
+Authors@R:
+    person("Jesse", "Lecy", email = "jdlecy@gmail.com", role = c("aut", "cre"))
+Description: Turns organization names and addresses into matchable keys:
+    a cleaned, abbreviation-standardized name key with legal suffixes
+    removed, an exact-lookup core name, USPS-standardized street keys with
+    the suite parsed out, nested ZIP prefixes, and the legal form, ordinal and
+    number features record linkage uses. Counts name, token and address
+    frequencies over those keys, and fingerprints the code that makes them so
+    that stored keys can refuse to be used with a different normalizer. Moved
+    unchanged out of 'npmatch', which uses it for matching, as does 'matchdb',
+    which stores its keys.
+License: MIT + file LICENSE
+URL: https://github.com/Nonprofit-Open-Data-Collective/npnormalize
+BugReports: https://github.com/Nonprofit-Open-Data-Collective/npnormalize/issues
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3
+Depends:
+    R (>= 4.1.0)
+Imports:
+    data.table,
+    datasets,
+    stats,
+    stringi,
+    stringr,
+    tools,
+    utils
+Suggests:
+    npmatch,
+    testthat (>= 3.0.0)
+Remotes:
+    Nonprofit-Open-Data-Collective/npmatch
+Config/testthat/edition: 3
