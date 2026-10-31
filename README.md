@@ -54,7 +54,9 @@ when present.
 * ZIP parts: `zip5`, `zip3`, `zip9`;
 * `state_abb`.
 
-`np_name_core()` and `np_name_placeholder()` work on bare name strings.
+`np_name_core()` and `np_name_placeholder()` work on bare name strings, and
+`np_extract_unit()` reads the secondary unit out of one free-text address line
+(`"123 Main St Ste 300"` -> `"STE 300"`, `NA` where there is none).
 
 **Statistics over the keys:**
 * `np_name_freq()` counts how many records share each name key.
@@ -66,7 +68,7 @@ when present.
 
 ```r
 np_normalize_signature()
-#> [1] "v1-3e7b9f9d59bbb19e"
+#> [1] "v1-6d90b52d8b781673"
 ```
 
 The signature is a hash of the rule tables and functions behind the keys and

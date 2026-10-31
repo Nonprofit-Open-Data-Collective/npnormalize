@@ -25,7 +25,7 @@
 
     <a class="navbar-brand me-2" href="index.html">npnormalize</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -61,7 +61,6 @@
 <div class="page-header"><h1 id="npnormalize">npnormalize<a class="anchor" aria-label="anchor" href="#npnormalize"></a>
 </h1></div>
 <!-- badges: start -->
-
 <p>npnormalize turns nonprofit names and addresses into keys that can be matched. It is the normalizer shared by three packages:</p>
 <ul>
 <li>
@@ -98,7 +97,7 @@
 <span><span class="co">#&gt; 2   SAINT LUKES HOSPITAL SAINT LUKES HOSPITAL FOUNDATION     PO BOX 1558           &lt;NA&gt; 75201        TX</span></span></code></pre></div>
 <p><strong>Input columns.</strong> The frame needs the columns <code>name</code>, <code>dba</code>, <code>street</code>, <code>unit</code>, <code>zip5</code>, <code>zip_plus4</code> and <code>state</code>, with <code>NA</code> or <code>""</code> where a value is unknown. These are npmatch’s canonical fields, which <code><a href="https://nonprofit-open-data-collective.github.io/npmatch/reference/np_query.html" class="external-link">npmatch::np_query()</a></code> and <code><a href="https://nonprofit-open-data-collective.github.io/npmatch/reference/np_reference.html" class="external-link">npmatch::np_reference()</a></code> produce from any dataset. <code>division</code> is used when present.</p>
 <p><strong>Columns added:</strong> * name keys: <code>name_key</code>, <code>name_full</code>, <code>name_core</code>, <code>dba_key</code>; * name features: <code>name_form</code>, <code>name_nums</code>, <code>name_ord</code>, <code>name_placeholder</code>; * street parts: <code>street_key</code>, <code>street_num</code>, <code>street_name</code>, <code>street_type</code>, <code>street_unit</code>, <code>street_unit_id</code>, <code>is_po_box</code>; * ZIP parts: <code>zip5</code>, <code>zip3</code>, <code>zip9</code>; * <code>state_abb</code>.</p>
-<p><code><a href="reference/np_name_core.html">np_name_core()</a></code> and <code><a href="reference/np_name_core.html">np_name_placeholder()</a></code> work on bare name strings.</p>
+<p><code><a href="reference/np_name_core.html">np_name_core()</a></code> and <code><a href="reference/np_name_core.html">np_name_placeholder()</a></code> work on bare name strings, and <code><a href="reference/np_tokenize.html">np_extract_unit()</a></code> reads the secondary unit out of one free-text address line (<code>"123 Main St Ste 300"</code> -&gt; <code>"STE 300"</code>, <code>NA</code> where there is none).</p>
 <p><strong>Statistics over the keys:</strong> * <code><a href="reference/np_name_freq.html">np_name_freq()</a></code> counts how many records share each name key. * <code><a href="reference/np_token_idf.html">np_token_idf()</a></code> weights each name token by how rare it is. * <code><a href="reference/np_addr_freq.html">np_addr_freq()</a></code> counts the records at each address and suite, and classifies the address as federated, shared, building or cluster.</p>
 </div>
 <div class="section level2">
@@ -106,7 +105,7 @@
 </h2>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/np_normalize_signature.html">np_normalize_signature</a></span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] "v1-3e7b9f9d59bbb19e"</span></span></code></pre></div>
+<span><span class="co">#&gt; [1] "v1-6d90b52d8b781673"</span></span></code></pre></div>
 <p>The signature is a hash of the rule tables and functions behind the keys and statistics, so it changes when their behaviour changes. * <strong>What it ignores:</strong> comments and formatting. * <strong>What it leaves out:</strong> the matching code in npmatch (comparison, scoring, vetoes), because nothing it computes is stored.</p>
 <p>Anything that stores keys should stamp the signature when it is built, and refuse to load under a different one. matchdb does this for its database, bundles and tranches. <code>np_normalize_signature(detail = TRUE)</code> shows which rule table or function moved.</p>
 <p>The code was moved here from npmatch unchanged, so the signature is the one npmatch reported (<code>dev/EXTRACTION.md</code>). A test pins the value. Changing the normalizer is allowed, but it is a deliberate release: update the pin and rebuild what depends on it.</p>
@@ -159,7 +158,7 @@
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.3.</p>
 </div>
 
     </footer>

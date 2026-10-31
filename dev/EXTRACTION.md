@@ -4,6 +4,14 @@
 every function name and body unchanged, so its signature stays
 `v1-3e7b9f9d59bbb19e` and every published matchdb build stays usable.
 
+> **The signature has since moved, deliberately.** npnormalize 0.1.2 fixed a
+> unit-extraction bug ([#7](https://github.com/Nonprofit-Open-Data-Collective/npnormalize/issues/7))
+> and is `v1-6d90b52d8b781673`. The move above was signature-preserving, as
+> planned; the freeze that made it so ended when step 2 merged, and the first
+> normalizer fix after it is the first value change. **Published matchdb builds
+> are refused under 0.1.2 and must be rebuilt** (about 3 hours, plus the
+> uploads) — see the 0.1.2 row below.
+
 ## Status
 
 *Updated 2026-10-28, after step 2 merged and npnormalize 0.1.1.* This file is
@@ -25,6 +33,7 @@ The last three are open PRs.
 | **2. npmatch imports npnormalize** | **Done.** [npmatch#22](https://github.com/Nonprofit-Open-Data-Collective/npmatch/pull/22) merged on 2026-10-28; npmatch is now 0.1.1.9000, and NEWS says the next release is 0.2.0. npmatch's tests pass (169). With it installed, these suites pass unchanged: matchdb (211, with the three skips below), pfmatch (112), and networked990 (50; its 4 errors are a missing `synthid` package, and appear with npmatch 0.1.1 too). The normalizer now lives only here, so the freeze on editing it in npmatch is over. |
 | **npnormalize 0.1.1** | **Done.** [npnormalize#4](https://github.com/Nonprofit-Open-Data-Collective/npnormalize/pull/4), tagged `v0.1.1`. It exports `np_unit_id()`, the public suite-id function step 3 needs. The signature is unchanged. |
 | **3. matchdb imports npnormalize** | **Done.** [matchdb#25](https://github.com/Nonprofit-Open-Data-Collective/matchdb/pull/25) merged on 2026-10-28 (`df48507`). matchdb requires `npnormalize (>= 0.1.1)`, calls `np_addr_key()` and `np_unit_id()` directly, only suggests npmatch, and records `npnormalize_version` in its stamps. Its tests pass (215, none skipped), and `R CMD check` gives 0 errors and 0 warnings. |
+| **npnormalize 0.1.2** | **Done.** [npnormalize#8](https://github.com/Nonprofit-Open-Data-Collective/npnormalize/pull/8), for [#7](https://github.com/Nonprofit-Open-Data-Collective/npnormalize/issues/7): `BUILDING` was missing from `.np_unit_designators` while `.np_street_types` contracted it to `BLDG`, so the two spellings of one address disagreed on both `street_key` and `street_unit`. Fixing it **moves the signature to `v1-6d90b52d8b781673`** — the first change since the move, and exactly the kind the 0.1.0 freeze existed to stop happening by accident. **Published matchdb builds are refused under 0.1.2 and must be rebuilt**, because any address spelling a unit designator out now keys differently; the restore-point pins above still reproduce the old values. matchdb's *code* needs nothing: it calls `np_unit_id()` only on `street_unit`, every canonical value round-trips through the new gate, and both macro-parity vectors in its `test-places.R` are unchanged — so `npnormalize (>= 0.1.1)` still holds, and only the artifacts are stale. Also gated the exported `np_unit_id()` and added `np_extract_unit()` (neither is in the registry). |
 | **4. npmatch gets its reference from matchdb** | **Not started.** It needs a decision first: import matchdb, or only suggest it. |
 | **5. Downstream** | Optional. pfmatch and networked990 work unchanged through npmatch's re-exports. Their notes say what switching would mean. |
 
@@ -111,7 +120,10 @@ Everything it lists moves, plus the code that computes the signature:
 
 The wrappers are not in the registry, so they do not touch the signature.
 
-## The signature survives: tested
+## The signature survives the move: tested
+
+*(Of the move itself. npnormalize 0.1.2 then changed it on purpose — see the
+note at the top.)*
 
 A prototype (`dev/extract-from-npmatch.R`, run against `npmatch@de52bb9`)
 copied the 54 objects (726 lines) unchanged into a scratch `npnormalize`:
