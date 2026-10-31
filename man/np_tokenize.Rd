@@ -4,6 +4,7 @@
 \alias{np_tokenize}
 \alias{np_doc_freq}
 \alias{np_addr_key}
+\alias{np_extract_unit}
 \alias{np_unit_id}
 \alias{np_state_abb}
 \title{Internals npmatch and matchdb call}
@@ -13,6 +14,8 @@ np_tokenize(frame, token_col, stopwords, min_token_len, concat_adjacent)
 np_doc_freq(row, token)
 
 np_addr_key(street_keys, zip5 = NULL)
+
+np_extract_unit(street, unit = NULL)
 
 np_unit_id(unit)
 
@@ -33,21 +36,30 @@ np_state_abb(state)
 
 \item{street_keys, zip5}{Street keys and ZIP codes from \code{\link[=np_normalize]{np_normalize()}}.}
 
-\item{unit}{Suites as \code{\link[=np_normalize]{np_normalize()}} writes them in \code{street_unit}
-(\code{"STE 300"}, \code{"FL 2"}, \code{"# 12"}).}
+\item{street}{A free-text street or address line, as \code{\link[=np_normalize]{np_normalize()}} takes
+it in \code{street}.}
+
+\item{unit}{For \code{np_extract_unit()}, the canonical second address line, read
+only where \code{street} carries no unit; a bare value there is accepted
+(\code{"300"} gives \code{"# 300"}), since a dedicated unit column needs no
+designator to say what it is. For \code{np_unit_id()}, a suite as
+\code{\link[=np_normalize]{np_normalize()}} writes it in \code{street_unit} (\code{"STE 300"}, \code{"FL 2"},
+\code{"# 12"}).}
 
 \item{state}{State names or codes.}
 }
 \value{
 \code{np_tokenize()}: a list of base and concatenated token tables.
 \code{np_doc_freq()}: a named numeric vector of row counts per token.
-\code{np_addr_key()}: a character vector of address keys. \code{np_unit_id()}: a
+\code{np_addr_key()}: a character vector of address keys.
+\code{np_extract_unit()}: a character vector of canonical units, \code{NA} where the
+address names none. \code{np_unit_id()}: a
 character vector of suite identifiers, \code{NA} where there is none.
 \code{np_state_abb()}: a character vector of two-letter codes, \code{NA} where none
 applies.
 }
 \description{
-Thin, exported wrappers around five internal helpers. npmatch's blocking,
+Thin, exported wrappers around six internal helpers. npmatch's blocking,
 comparison and geography code, and matchdb's place keys, call these instead
 of reaching into this package's internals. Most users never call them.
 }
@@ -58,15 +70,29 @@ of reaching into this package's internals. Most users never call them.
 \item \code{np_doc_freq()} counts, for each token, the rows it appears in.
 \item \code{np_addr_key()} builds the address key \code{\link[=np_addr_freq]{np_addr_freq()}} counts on: the
 street key and ZIP, blank for a PO box.
+\item \code{np_extract_unit()} reads the secondary unit out of one free-text address
+line, exactly as \code{\link[=np_normalize]{np_normalize()}} fills \code{street_unit}: \code{"STE 300"},
+\code{"FL 2"}, \code{"# 12"}, or \code{NA} where the line names no unit. This is the
+single-vector entry point onto the designator gate, for a caller holding a
+free-text line (a Form 990-PF address line 2, say) rather than a frame.
 \item \code{np_unit_id()} reduces a suite as written to its identifier: the
 designator and separators are dropped, so \code{"STE 300"}, \code{"Suite 300"} and
 \code{"# 300"} all give \code{"300"}, and \code{"STE D-2"} gives \code{"D2"}. This is the
 \code{street_unit_id} column \code{\link[=np_normalize]{np_normalize()}} adds, computed from
 \code{street_unit}.
+
+It is gated by the same designator pattern as \code{np_extract_unit()}, so a
+line that names no unit returns \code{NA} rather than a confident reduction of
+whatever was passed: \code{"PO BOX 1367"}, \code{"114 HIGH ST"}, \code{"LAS VEGAS"} and
+\code{"400891"} are all \code{NA}. A bare identifier with no designator (\code{"300"}) is
+\code{NA} too, because a digit string on its own is as often a box number or a
+record counter as a door; pass a dedicated unit column as
+\code{np_extract_unit()}'s \code{unit} argument, where a bare value is accepted
+because the column itself says what it is.
 \item \code{np_state_abb()} maps a state name or code to its two-letter code.
 }
 
-They are not part of the normalizer signature: each calls a function that
-is (\code{\link[=np_normalize_signature]{np_normalize_signature()}}), and adds nothing of its own.
+They are not part of the normalizer signature: each only calls functions
+that are (\code{\link[=np_normalize_signature]{np_normalize_signature()}}), and adds nothing of its own.
 }
 \keyword{internal}

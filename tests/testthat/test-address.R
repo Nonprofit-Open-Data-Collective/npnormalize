@@ -24,6 +24,33 @@ test_that("unit designators are parsed, and ordinary words are not mistaken for 
   expect_equal(.np_extract_unit("259 N RADNOR CHESTER RD STE 150"), "STE 150")
 })
 
+test_that("a long designator .np_street_types contracts is extracted as a unit", {
+  # The unit is extracted from the RAW street; the BUILDING -> BLDG contraction
+  # happens two lines later, in .np_street_key(). So a long form missing from
+  # .np_unit_designators split two spellings of one address: one kept the unit
+  # inside street_key and recorded no street_unit, the other stripped it
+  # correctly, and the pair could neither block nor compare on the unit.
+  # Reported from pfmatch on the 990-PF recipient-address line (#7).
+  s <- c("100 CAMPUS CENTER BUILDING 86E", "100 CAMPUS CENTER BLDG 86E")
+  expect_equal(.np_extract_unit(s), c("BLDG 86E", "BLDG 86E"))
+  expect_equal(.np_street_key(s), rep("100 CAMPUS CENTER", 2))
+
+  # The general case, because this class of bug is invisible one case at a time:
+  # the street key looks right either way. Every .np_street_types key whose
+  # abbreviation is a designator must be a designator itself.
+  long  <- names(.np_street_types)
+  short <- unname(.np_street_types)
+  d     <- names(.np_unit_designators)
+  expect_equal(long[short %in% d & !(long %in% d)], character(0))
+
+  # and BUILDING is still a street word: it reads as a designator only when an
+  # identifier follows it, so a street named for a building keeps every token
+  expect_equal(.np_extract_unit(c("1 EMPIRE STATE BUILDING", "4 BUILDING COMMISSION RD",
+                                  "10 BUILDINGS WAY")),
+               rep(NA_character_, 3))
+  expect_equal(.np_street_key("4 BUILDING COMMISSION RD"), "4 BLDG COMMISSION RD")
+})
+
 test_that("the compared identifier ignores how the designator was spelled", {
   # "STE 300", "Suite 300" and "# 300" are one office; 320 and 380 are not the
   # same office to any degree, which is why this is an id and not a string score
@@ -137,6 +164,36 @@ test_that("np_unit_id() is the identifier np_normalize() puts in street_unit_id"
     state = "TX"))
   expect_identical(np_unit_id(d$street_unit), d$street_unit_id)
   expect_identical(np_unit_id(d$street_unit), .np_unit_id(d$street_unit))
+})
+
+test_that("np_unit_id() is NA on a line that names no unit", {
+  # It is exported, so it gets handed raw free-text address lines -- pfmatch
+  # reads the 990-PF recipient line with it. Ungated it reduced whatever it was
+  # given and returned it with no signal: "PO BOX 1367" -> "BOX1367",
+  # "LAS VEGAS" -> "VEGAS", "114 HIGH ST" -> "114HIGHST" (#7). The designator
+  # gate is the whole difference between a suite and a city.
+  expect_equal(np_unit_id(c("PO BOX 1367", "BOX 19960", "114 HIGH ST", "LAS VEGAS",
+                            "C/O JOHN SMITH", "NORTH TOWER", "400891", "STREET")),
+               rep(NA_character_, 8))
+  # A bare identifier is NA too: a digit string on its own is as often a box
+  # number or a record counter as a door. A dedicated unit column does say what
+  # it is, and goes to np_extract_unit()'s `unit` argument instead.
+  expect_equal(np_unit_id("300"), NA_character_)
+  expect_equal(np_extract_unit(NA_character_, "300"), "# 300")
+})
+
+test_that("np_extract_unit() reads the unit out of one free-text line", {
+  # The public way onto the designator gate: a caller with one address line
+  # should not have to normalize a data frame to use it.
+  expect_equal(np_extract_unit(c("123 Main St Ste 300", "1180 NORTHERN BLVD - 2ND FL",
+                                 "100 CAMPUS CENTER BUILDING 86E", "PO BOX 1558",
+                                 "LAS VEGAS", NA)),
+               c("STE 300", "FL 2", "BLDG 86E", NA, NA, NA))
+  # and it is the street_unit column np_normalize() writes
+  d <- np_normalize(np_test_frame(.id = as.character(1:4), name = "ACME FUND",
+    street = c("123 Main St Ste 300", "1 A St #300", "PO BOX 1558",
+               "100 CAMPUS CENTER BUILDING 86E"), state = "TX"))
+  expect_identical(np_extract_unit(d$street), d$street_unit)
 })
 
 test_that("np_state_abb() maps names and codes to two letters", {

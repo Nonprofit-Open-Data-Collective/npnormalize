@@ -464,9 +464,21 @@ np_name_rules <- function() {
 # is street names -- PIERCE ST, KEYSER AVE, SIDEHILL RD, N FRNT ST -- not units.
 # NO is left out for a sharper reason: it is North far more often than Number
 # ("123 NO 5TH ST"), so unlike the others it would delete a real street token.
+#
+# Every long form whose abbreviation is listed here must be listed BESIDE it,
+# because the unit is extracted from the RAW street while .np_street_types
+# contracts the long form two lines later in np_normalize(). BUILDING was the
+# one key missing its long form, so the two spellings of one address disagreed
+# on both outputs: "100 CAMPUS CENTER BUILDING 86E" kept the unit inside
+# street_key and recorded no street_unit, while "100 CAMPUS CENTER BLDG 86E"
+# stripped it correctly -- so the pair could neither block on street_key nor
+# compare on the unit. test-address.R now asserts the general case over
+# .np_street_types, because this class of bug is invisible otherwise: the
+# street key looks right.
 .np_unit_designators <- c(
   SUITE = "STE",   STE  = "STE",   APARTMENT = "APT", APT = "APT",
   UNIT  = "UNIT",  ROOM = "RM",    RM  = "RM",        BLDG = "BLDG",
+  BUILDING = "BLDG",
   FLOOR = "FL",    FL   = "FL",    PMB = "PMB",
   SPACE = "SPC",   SPC  = "SPC",   LOT = "LOT",       TRLR = "TRLR",
   DEPT  = "DEPT",  STOP = "STOP",  BSMT = "BSMT",     LBBY = "LBBY",

@@ -4,12 +4,18 @@
 # useless because people route around it. Moved from npmatch, with the pinned
 # value added.
 
-test_that("the signature is the one npmatch gave before the move", {
-  # Every artifact matchdb has published was stamped with this value. If this
-  # fails, the normalizer's behaviour changed: that is allowed, but it is a
-  # deliberate release (and a matchdb rebuild), never a side effect. Update the
-  # pin in the same PR that explains the change.
-  expect_identical(np_normalize_signature(), "v1-3e7b9f9d59bbb19e")
+test_that("the signature is the pinned value", {
+  # Any artifact built against an earlier npnormalize was stamped with an
+  # earlier value. If this fails, the normalizer's behaviour changed: that is
+  # allowed, but it is a deliberate release (and a matchdb rebuild), never a
+  # side effect. Update the pin in the same PR that explains the change.
+  #
+  # v1-3e7b9f9d59bbb19e  0.1.0, 0.1.1 -- the value npmatch gave before the move
+  # v1-6d90b52d8b781673  0.1.2 -- BUILDING added to .np_unit_designators (#7),
+  #                      which moves street_key and street_unit on any address
+  #                      spelling the designator out, so cached keys must be
+  #                      rebuilt.
+  expect_identical(np_normalize_signature(), "v1-6d90b52d8b781673")
 })
 
 test_that("the signature is stable within a session and across calls", {

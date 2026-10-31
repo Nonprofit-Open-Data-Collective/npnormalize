@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">npnormalize</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -39,16 +39,42 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="0.1.1" id="npnormalize-011">npnormalize 0.1.1<a class="anchor" aria-label="anchor" href="#npnormalize-011"></a></h2>
-<ul><li>New exported <code><a href="../reference/np_tokenize.html">np_unit_id()</a></code>. It reduces a suite as <code><a href="../reference/np_normalize.html">np_normalize()</a></code> writes it in <code>street_unit</code> (<code>"STE 300"</code>, <code>"# 300"</code>, <code>"STE D-2"</code>) to its identifier (<code>"300"</code>, <code>"300"</code>, <code>"D2"</code>), which is the <code>street_unit_id</code> column.
-<ul><li>matchdb’s <code>md_unit_id()</code> needs a public function for this, because it can no longer find npmatch’s internal <code>.np_unit_id()</code> once npmatch imports this package (step 3 of <code>dev/EXTRACTION.md</code>).</li>
-<li>Like the other four wrappers, it adds nothing of its own, so the signature is unchanged: <code><a href="../reference/np_normalize_signature.html">np_normalize_signature()</a></code> is still <code>v1-3e7b9f9d59bbb19e</code>.</li>
+<h2 class="pkg-version" data-toc-text="0.1.2" id="npnormalize-012">npnormalize 0.1.2<a class="anchor" aria-label="anchor" href="#npnormalize-012"></a></h2>
+<p>Two unit-extraction bugs reported from pfmatch, which parses the free-text secondary-unit line of Form 990-PF Part XIV Table 3a with this package (<a href="https://github.com/Nonprofit-Open-Data-Collective/npnormalize/issues/7" class="external-link">#7</a>).</p>
+<ul><li>
+<p><code>BUILDING</code> is now a unit designator, as its abbreviation <code>BLDG</code> already was. The unit is extracted from the raw street, while <code>.np_street_types</code> contracts <code>BUILDING -&gt; BLDG</code> two lines later in <code><a href="../reference/np_normalize.html">np_normalize()</a></code>, so the pattern never saw the one spelling it recognized and the two spellings of one address disagreed on both outputs:</p>
+<table class="table"><thead><tr class="header"><th>raw street</th>
+<th><code>street_key</code></th>
+<th><code>street_unit</code></th>
+</tr></thead><tbody><tr class="odd"><td><code>100 CAMPUS CENTER BUILDING 86E</code></td>
+<td>was <code>100 CAMPUS CENTER BLDG 86E</code>
+</td>
+<td>was <code>NA</code>
+</td>
+</tr><tr class="even"><td><code>100 CAMPUS CENTER BLDG 86E</code></td>
+<td><code>100 CAMPUS CENTER</code></td>
+<td><code>BLDG 86E</code></td>
+</tr></tbody></table><p>Both now key as <code>100 CAMPUS CENTER</code> with unit <code>BLDG 86E</code>, so the pair blocks and compares. <code>BUILDING</code> is still an ordinary street word where no identifier follows it (<code>1 EMPIRE STATE BUILDING</code>, <code>4 BUILDING COMMISSION RD</code>).</p>
+<ul><li>A test asserts the general case over <code>.np_street_types</code>: every key whose abbreviation is a designator must be a designator itself. This class of bug is invisible one case at a time, because the street key looks right.</li>
+<li>
+<strong>This moves the signature</strong>, to <code>v1-6d90b52d8b781673</code>. Any address spelling the designator out keys differently, so cached keys and the corpus statistics built on them must be rebuilt.</li>
 </ul></li>
+<li>
+<p><code><a href="../reference/np_tokenize.html">np_unit_id()</a></code> is gated by the designator pattern, so it returns <code>NA</code> for a line that names no unit instead of reducing whatever it was given. It is exported, and a caller handing it a raw address line got confident nonsense with no signal: <code>"PO BOX 1367"</code> gave <code>"BOX1367"</code>, <code>"LAS VEGAS"</code> gave <code>"VEGAS"</code>, <code>"114 HIGH ST"</code> gave <code>"114HIGHST"</code>. All three are now <code>NA</code>.</p>
+<ul><li>A bare identifier with no designator (<code>"300"</code>) is now <code>NA</code> as well, because a digit string alone is as often a box number or a record counter as a door. Pass a dedicated unit column as <code><a href="../reference/np_tokenize.html">np_extract_unit()</a></code>’s <code>unit</code> argument, where a bare value is still accepted.</li>
+<li>
+<code><a href="../reference/np_normalize.html">np_normalize()</a></code> is unaffected: it calls the internal <code>.np_unit_id()</code> on an already-extracted <code>street_unit</code>, and <code>street_unit_id</code> does not change.</li>
+</ul></li>
+<li><p>New exported <code><a href="../reference/np_tokenize.html">np_extract_unit()</a></code>, the single-vector entry point onto that gate: it reads the unit out of one free-text address line exactly as <code><a href="../reference/np_normalize.html">np_normalize()</a></code> fills <code>street_unit</code>. A consumer parsing one line no longer has to normalize a one-column data frame to reach the gate.</p></li>
 </ul></div>
     <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.1.1" id="npnormalize-011">npnormalize 0.1.1<a class="anchor" aria-label="anchor" href="#npnormalize-011"></a></h2>
+<ul><li>New exported <code><a href="../reference/np_tokenize.html">np_unit_id()</a></code>. It reduces a suite as <code><a href="../reference/np_normalize.html">np_normalize()</a></code> writes it in <code>street_unit</code> (<code>"STE 300"</code>, <code>"# 300"</code>, <code>"STE D-2"</code>) to its identifier (<code>"300"</code>, <code>"300"</code>, <code>"D2"</code>), which is the <code>street_unit_id</code> column.<ul><li>matchdb’s <code>md_unit_id()</code> needs a public function for this, because it can no longer find npmatch’s internal <code>.np_unit_id()</code> once npmatch imports this package (step 3 of <code>dev/EXTRACTION.md</code>).</li>
+<li>Like the other four wrappers, it adds nothing of its own, so the signature is unchanged: <code><a href="../reference/np_normalize_signature.html">np_normalize_signature()</a></code> is still <code>v1-3e7b9f9d59bbb19e</code>.</li>
+</ul></li></ul></div>
+    <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.1.0" id="npnormalize-010">npnormalize 0.1.0<a class="anchor" aria-label="anchor" href="#npnormalize-010"></a></h2>
-<ul><li>First release. npmatch’s normalizer moved into its own package, every function name and body unchanged (<code>dev/extract-from-npmatch.R</code>, from <code>npmatch@de52bb9</code>):
-<ul><li>the rule tables;</li>
+<ul><li>First release. npmatch’s normalizer moved into its own package, every function name and body unchanged (<code>dev/extract-from-npmatch.R</code>, from <code>npmatch@de52bb9</code>):<ul><li>the rule tables;</li>
 <li>
 <code><a href="../reference/np_normalize.html">np_normalize()</a></code>, <code><a href="../reference/np_name_core.html">np_name_core()</a></code> and <code><a href="../reference/np_name_core.html">np_name_placeholder()</a></code>;</li>
 <li>the corpus statistics (<code><a href="../reference/np_name_freq.html">np_name_freq()</a></code>, <code><a href="../reference/np_token_idf.html">np_token_idf()</a></code>, <code><a href="../reference/np_addr_freq.html">np_addr_freq()</a></code>, <code><a href="../reference/np_stopwords.html">np_stopwords()</a></code>);</li>
@@ -69,7 +95,7 @@
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.3.</p>
 </div>
 
     </footer></div>
