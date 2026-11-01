@@ -11,11 +11,15 @@ test_that("npnormalize and npmatch agree: keys, statistics, and only #7 moved", 
   # (#7) and the signatures no longer match. The useful assertion is no longer
   # that they are equal but that NOTHING ELSE drifted: the fix touches exactly
   # the designator table and the pattern built from it, and every other
-  # component hash is still identical.
+  # component hash is still identical. 0.1.3 added two components (the unit
+  # pick) and changed two more (#7's sequel, matchdb#29).
   a <- np_normalize_signature(detail = TRUE)$components
   b <- npmatch::np_normalize_signature(detail = TRUE)$components
-  expect_identical(names(a), names(b))
-  expect_identical(names(a)[a != b], c(".np_unit_designators", ".np_unit_pat"))
+  expect_identical(setdiff(names(a), names(b)), c(".np_pick_unit", ".np_unit_rank"))
+  expect_identical(setdiff(names(b), names(a)), character(0))
+  common <- intersect(names(a), names(b))
+  expect_identical(common[a[common] != b[common]],
+                   c(".np_extract_unit", ".np_parse_street", ".np_unit_designators", ".np_unit_pat"))
   d <- np_test_frame(
     .ein = sprintf("EIN-%02d", 1:8),
     name = c("The Children's Museum of NH", "ST LUKE'S HOSPITAL FDN", "F.I.N.D., Inc.",

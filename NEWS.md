@@ -1,3 +1,37 @@
+# npnormalize 0.1.3
+
+Two parsing rules that 0.1.2 carried further, found when matchdb rebuilt under
+it ([matchdb#29](https://github.com/Nonprofit-Open-Data-Collective/matchdb/issues/29)).
+Neither changes `street_key`, so blocking is unaffected.
+
+* A line naming several units keeps the most specific one, not the first one
+  written. Every unit is cut from `street_key`, but `street_unit` holds one,
+  and the first was often the one that does not tell occupants apart:
+
+  | raw street | 0.1.2 `street_unit` | 0.1.3 |
+  |---|---|---|
+  | `1 BETHANY RD BUILDING 1 STE 5` | `BLDG 1` | `STE 5` |
+  | `2125 BISCAYNE BLVD STE 204 # 22915` | `STE 204` | `# 22915` |
+  | `1633 MAIN ST STE A PMB 175` | `STE A` | `PMB 175` |
+  | `123 MAIN ST RM 3 FL 2` | `RM 3` | `RM 3` |
+
+  The rank (`.np_unit_rank`) runs building < floor or area < door < mailbox,
+  and between two of one rank the last wins, because an address is written
+  from the outside in. In matchdb's 13.0M address strings, 56,466 name two or
+  more units, and the pick changes for 54,936 of them (17,724 current address
+  rows), mostly a mail store's suite giving way to the customer's box. The
+  second address line is read by the same rule.
+* The house number is a whole leading token. An ordinal street has none:
+  `16TH ST` gave `street_num` `16T` and `street_name` `H`, so two such records
+  agreed on a house number neither has. Grid numbers stay whole (`16W540 BLUFF
+  RD`, which gave `16W`), and a number run into the street name is its digits
+  (`921AIRPORT SERVICE RD` gives `921` on `AIRPORT SERVICE`, not `921A` on
+  `IRPORT SERVICE`) unless they could begin an ordinal. 19,909 of matchdb's
+  address strings change.
+* **This moves the signature**, to `v1-592912060053c4c3`. Cached
+  `street_unit`, `street_unit_id`, `street_num` and `street_name` values must
+  be rebuilt.
+
 # npnormalize 0.1.2
 
 Two unit-extraction bugs reported from pfmatch, which parses the free-text

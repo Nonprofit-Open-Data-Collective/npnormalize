@@ -51,6 +51,39 @@ test_that("a long designator .np_street_types contracts is extracted as a unit",
   expect_equal(.np_street_key("4 BUILDING COMMISSION RD"), "4 BLDG COMMISSION RD")
 })
 
+test_that("a line naming several units keeps the most specific, not the first", {
+  # Every unit is cut from street_key, but street_unit holds one. Keeping the
+  # first one written threw away the one that tells occupants apart: every suite
+  # of building 1 shared BLDG 1, and every mailbox of one mail store shared its
+  # suite. Reported from matchdb's 0.1.2 rebuild (matchdb#29).
+  x <- c("1 BETHANY RD BUILDING 1 STE 5", "BUILDING 114 16TH ST RM 3125",
+         "2125 BISCAYNE BLVD STE 204 # 22915", "1633 MAIN ST STE A PMB 175",
+         "1202 PLYMOUTH RD UNIT 1202 BLDG 12", "123 MAIN ST RM 3 FL 2",
+         "1212 BATH AVE FL 6 STE 8", "5 SOUTHSIDE DR STE 11 STE 124")
+  expect_equal(.np_extract_unit(x),
+    c("STE 5", "RM 3125", "# 22915", "PMB 175", "UNIT 1202", "RM 3", "STE 8", "STE 124"))
+  # the key still loses all of them
+  expect_equal(.np_street_key(x[1:3]), c("1 BETHANY RD", "16TH ST", "2125 BISCAYNE BLVD"))
+  # and the second address line is read by the same rule
+  expect_equal(.np_extract_unit("1201 S CLEARVIEW PKWY", "BLDG B STE 500"), "STE 500")
+  # every designator .np_norm_unit() can write has a rank, or the pick is NA
+  expect_true(all(c(unname(.np_unit_designators), "#", "FL") %in% names(.np_unit_rank)))
+})
+
+test_that("the house number is a whole leading token", {
+  # An ordinal street has none: the old rule read "16TH ST" as number "16T" on
+  # street "H". A grid number is one token; a number run into the street name is
+  # its digits, unless they could begin an ordinal.
+  k <- c("16TH ST", "6TH AND CHESTNUT ST", "123A MAIN ST", "123 MAIN ST",
+         "16W540 BLUFF RD", "0S064 KERRY CT", "921AIRPORT SERVICE RD", "2436TH ST",
+         "PO BOX 12", "")
+  p <- .np_parse_street(k)
+  expect_equal(p$street_num, c(NA, NA, "123A", "123", "16W540", "0S064", "921", NA, "12", NA))
+  expect_equal(p$street_name, c("16TH", "6TH AND CHESTNUT", "MAIN", "MAIN", "BLUFF", "KERRY",
+                                "AIRPORT SERVICE", "2436TH", "PO BOX", NA))
+  expect_equal(p$street_type, c("ST", "ST", "ST", "ST", "RD", "CT", "RD", "ST", NA, NA))
+})
+
 test_that("the compared identifier ignores how the designator was spelled", {
   # "STE 300", "Suite 300" and "# 300" are one office; 320 and 380 are not the
   # same office to any degree, which is why this is an id and not a string score

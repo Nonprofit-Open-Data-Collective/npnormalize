@@ -15,7 +15,11 @@ test_that("the signature is the pinned value", {
   #                      which moves street_key and street_unit on any address
   #                      spelling the designator out, so cached keys must be
   #                      rebuilt.
-  expect_identical(np_normalize_signature(), "v1-6d90b52d8b781673")
+  # v1-592912060053c4c3  0.1.3 -- a line naming several units keeps the most
+  #                      specific (.np_unit_rank, .np_pick_unit), and the house
+  #                      number is a whole token (.np_parse_street), which moves
+  #                      street_unit, street_unit_id, street_num and street_name.
+  expect_identical(np_normalize_signature(), "v1-592912060053c4c3")
 })
 
 test_that("the signature is stable within a session and across calls", {

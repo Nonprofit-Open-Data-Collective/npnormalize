@@ -68,7 +68,7 @@ when present.
 
 ```r
 np_normalize_signature()
-#> [1] "v1-6d90b52d8b781673"
+#> [1] "v1-592912060053c4c3"
 ```
 
 The signature is a hash of the rule tables and functions behind the keys and
