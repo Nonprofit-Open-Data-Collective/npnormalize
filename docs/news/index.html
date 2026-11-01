@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">npnormalize</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.3</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.4</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -38,6 +38,82 @@
       <small>Source: <a href="https://github.com/Nonprofit-Open-Data-Collective/npnormalize/blob/HEAD/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.1.4" id="npnormalize-014">npnormalize 0.1.4<a class="anchor" aria-label="anchor" href="#npnormalize-014"></a></h2>
+<p>A new address column asked for in <a href="https://github.com/Nonprofit-Open-Data-Collective/npnormalize/issues/9" class="external-link">#9</a>, and a defect the measurement for it turned up. Both were measured against the 3,687,435-row unified BMF; the scan is <code>dev/scan-box-component.R</code>, kept as the record, the way <code>scan-unit-designators.R</code> is for the designator list.</p>
+<ul><li>
+<p><strong><code>street_has_box</code></strong>, a second question about a box: does the street <em>carry</em> a box component, whether or not the whole street is one. <code>is_po_box</code> cannot answer it and should not be widened to — it is the gate that blanks the address key in <code><a href="../reference/np_tokenize.html">np_addr_key()</a></code>, so widening it would stop counting records at streets that are genuine buildings. Filers write the street on line 1 ending in the box <em>word</em> and carry the box <em>number</em> alone on line 2, and a consumer holding that bare number had nothing to tell a box number from a door:</p>
+<table class="table"><colgroup><col width="25%"><col width="25%"><col width="25%"><col width="25%"></colgroup><thead><tr class="header"><th>raw street</th>
+<th><code>street_key</code></th>
+<th><code>is_po_box</code></th>
+<th><code>street_has_box</code></th>
+</tr></thead><tbody><tr class="odd"><td><code>211 EMMET STREET SOUTH PO BOX</code></td>
+<td><code>211 EMMET ST S PO BOX</code></td>
+<td><code>FALSE</code></td>
+<td><code>TRUE</code></td>
+</tr><tr class="even"><td><code>300 KENAN CENTER DRIVE - CAMPUS BOX</code></td>
+<td><code>300 KENAN CENTER DR CAMPUS BOX</code></td>
+<td><code>FALSE</code></td>
+<td><code>TRUE</code></td>
+</tr><tr class="odd"><td><code>ONE HARRISON PLAZA BOX 5079</code></td>
+<td><code>ONE HARRISON PLAZA BOX 5079</code></td>
+<td><code>FALSE</code></td>
+<td><code>TRUE</code></td>
+</tr><tr class="even"><td><code>PO BOX A</code></td>
+<td><code>PO BOX A</code></td>
+<td><code>FALSE</code></td>
+<td><code>TRUE</code></td>
+</tr><tr class="odd"><td><code>PO BOX 1367</code></td>
+<td><code>PO BOX 1367</code></td>
+<td><code>TRUE</code></td>
+<td><code>TRUE</code></td>
+</tr><tr class="even"><td><code>22009 BOX ELDER RD</code></td>
+<td><code>22009 BOX ELDER RD</code></td>
+<td><code>FALSE</code></td>
+<td><code>FALSE</code></td>
+</tr></tbody></table><p><code>is_po_box</code> implies <code>street_has_box</code> on every row, because the flag is read from the key <code><a href="../reference/np_normalize.html">np_normalize()</a></code> publishes — so a consumer holding a cached <code>street_key</code> can recompute it without re-normalizing.</p>
+<p>The box word has to <strong>end</strong> the key, with at most digits or a single letter after it. That anchor is the whole guard, and the reason the pattern is not the unanchored <code>BOX</code> pfmatch keeps locally: a bare <code>\bBOX\b</code> matches 2,099 rows the anchored form does not, and 127 of them are streets <em>named</em> for a box (<code>BOX SPGS RD</code>, <code>BOX ELDER ST</code>, <code>BOX RD</code>). The anchored form flags 1 of those 405 rows, and that one is a box. <code>BOXWOOD</code> and <code>BOXER</code> never match either way.</p>
+<p>The flag adds 11,982 rows (0.325%) to the 579,602 <code>is_po_box</code> already reports: 562 a street then a bare <code>BOX</code>, 10,345 a street then <code>BOX &lt;number&gt;</code>, and 1,075 a lettered box (<code>PO BOX A</code> … <code>PO BOX Z</code>, which <code>.np_pobox_pat</code> misses because it requires digits). <code>DRAWER</code> and <code>BIN</code> were measured and left out at 55 and 28 rows, against a false positive already visible at that volume (<code>1206 GRAIN BIN RD</code>).</p>
+<p><strong><code>street_unit</code> is deliberately not changed by this.</strong> The flag says the street has a box, not that a companion number is that box’s — the street can name a suite as well (<code>4347 W NORTHWEST HWY STE 130 BOX</code>), and that call belongs to whoever holds the second line. 0.1.2 already removed the sharp edge by making <code>np_unit_id("400891")</code> <code>NA</code>; this adds the positive signal a consumer can key on, and lets pfmatch replace its local <code>.PF_BOX_RE</code> with a column.</p>
+</li>
+<li>
+<p><strong><code>.np_parse_street()</code> now treats only an anchored box as a box.</strong> Its gate was an unanchored <code>grepl("\\bBOX\\b")</code>, which overwrote the parse of 14,014 BMF rows (0.380%) whose street merely carries or is named for a box, on rows where <code>is_po_box</code> said <code>FALSE</code>:</p>
+<table class="table"><thead><tr class="header"><th><code>street_key</code></th>
+<th>0.1.3 <code>street_num</code> / <code>street_name</code>
+</th>
+<th>0.1.4</th>
+</tr></thead><tbody><tr class="odd"><td><code>ONE HARRISON PLZ BOX 5079</code></td>
+<td>
+<code>5079</code> / <code>PO BOX</code>
+</td>
+<td>
+<code>NA</code> / <code>ONE HARRISON PLZ BOX 5079</code>
+</td>
+</tr><tr class="even"><td><code>22009 BOX ELDER RD</code></td>
+<td>
+<code>NA</code> / <code>PO BOX</code>
+</td>
+<td>
+<code>22009</code> / <code>BOX ELDER</code> (type <code>RD</code>)</td>
+</tr><tr class="odd"><td><code>211 EMMET ST S PO BOX</code></td>
+<td>
+<code>NA</code> / <code>PO BOX</code>
+</td>
+<td>
+<code>211</code> / <code>EMMET ST S PO BOX</code>
+</td>
+</tr><tr class="even"><td><code>PO BOX 12</code></td>
+<td>
+<code>12</code> / <code>PO BOX</code>
+</td>
+<td>
+<code>12</code> / <code>PO BOX</code>
+</td>
+</tr></tbody></table><p>A BOX-named street used to lose its house number to a box number it does not have, and two records agreed on a <code>street_num</code> neither had. The parse and <code>is_po_box</code> can no longer disagree about what a box is, which a test asserts.</p>
+</li>
+<li><p><strong>This moves the signature</strong>, to <code>v1-1179714ce1e9d31f</code>. <code>street_has_box</code> is a new cached column and <code>street_num</code> / <code>street_name</code> move on the rows above, so matchdb must rebuild its derived columns again — the 0.1.3 rebuild (<a href="https://github.com/Nonprofit-Open-Data-Collective/matchdb/issues/29" class="external-link">matchdb#29</a>) had already closed, so this does not ride along with it.</p></li>
+<li><p>npmatch needs no change: it reads <code>is_po_box</code> only for <code>geo_pobox</code>, and the new column is additive.</p></li>
+</ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.1.3" id="npnormalize-013">npnormalize 0.1.3<a class="anchor" aria-label="anchor" href="#npnormalize-013"></a></h2>
 <p>Two parsing rules that 0.1.2 carried further, found when matchdb rebuilt under it (<a href="https://github.com/Nonprofit-Open-Data-Collective/matchdb/issues/29" class="external-link">matchdb#29</a>). Neither changes <code>street_key</code>, so blocking is unaffected.</p>
@@ -121,7 +197,7 @@
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.3.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer></div>
