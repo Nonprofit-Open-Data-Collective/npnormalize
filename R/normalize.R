@@ -543,13 +543,49 @@ np_name_rules <- function() {
 # dedicated unit column needs no designator to say what it is.
 .np_extract_unit <- function(street, unit = NULL) {
   s <- toupper(as.character(street)); s[is.na(s)] <- ""
-  out <- .np_norm_unit(stringr::str_extract(s, .np_unit_pat))
+  out <- .np_pick_unit(s)
   if (!is.null(unit)) {
     u <- toupper(stringr::str_squish(as.character(unit))); u[is.na(u)] <- ""
-    alt <- .np_norm_unit(stringr::str_extract(u, .np_unit_pat))
+    alt <- .np_pick_unit(u)
     bare <- is.na(alt) & grepl("^[0-9A-Z][0-9A-Z-]*$", u)
     alt[bare] <- .np_norm_unit(paste("#", u[bare]))
     out <- ifelse(is.na(out), alt, out)
+  }
+  out
+}
+
+# How fine-grained each canonical designator is, coarse to fine: a building, an
+# area inside it, a door, a mailbox. Every value of .np_unit_designators, plus
+# the "#" and postfix "FL" forms .np_norm_unit() writes, must be ranked
+# (test-address.R asserts it).
+.np_unit_rank <- c(
+  BLDG = 1L, HNGR = 1L,
+  FL   = 2L, BSMT = 2L, LBBY = 2L, DEPT = 2L, STOP = 2L,
+  STE  = 3L, APT  = 3L, UNIT = 3L, RM   = 3L, SPC  = 3L, LOT = 3L, TRLR = 3L,
+  `#`  = 3L,
+  PMB  = 4L
+)
+
+# The ONE unit a line names, where it may name several. Every unit is cut from
+# street_key, but street_unit holds one, and taking the first one written threw
+# away the one that tells occupants apart: "1 BETHANY RD BUILDING 1 STE 5" kept
+# BLDG 1, so every suite in building 1 shared a unit, and
+# "2125 BISCAYNE BLVD STE 204 # 22915" kept STE 204, so every mailbox in one
+# mail store did. 56,466 of matchdb's 13.0M address strings name two or more.
+# The most specific unit wins (.np_unit_rank); between two of one rank the LAST
+# wins, because an address is written from the outside in.
+.np_pick_unit <- function(s) {
+  m <- stringr::str_extract_all(s, .np_unit_pat)
+  n <- lengths(m)
+  out <- rep(NA_character_, length(s))
+  one <- n == 1L
+  out[one] <- .np_norm_unit(unlist(m[one], use.names = FALSE))
+  for (i in which(n > 1L)) {
+    u <- .np_norm_unit(m[[i]])
+    u <- u[!is.na(u)]
+    if (!length(u)) next
+    r <- unname(.np_unit_rank[sub(" .*$", "", u)])
+    out[i] <- u[max(which(r == max(r)))]
   }
   out
 }
@@ -810,8 +846,18 @@ np_token_idf <- function(name_keys, stopwords = np_stopwords(), min_token_len = 
 .np_parse_street <- function(street_key) {
   sk <- toupper(as.character(street_key)); sk[is.na(sk)] <- ""
   is_po <- grepl("\\bBOX\\b", sk)
-  lead <- stringr::str_extract(sk, "^[0-9]+[A-Z]?(-[0-9]+[A-Z]?)?")
-  rest <- stringr::str_squish(sub("^[0-9]+[A-Z]?(-[0-9]+[A-Z]?)?", "", sk))
+  # The house number is a whole leading token. Without the lookahead an ordinal
+  # street was read as one: "16TH ST" gave street_num "16T" and street_name "H",
+  # and "6TH AND CHESTNUT ST" gave "6T" and "H AND CHESTNUT". The grid numbers
+  # of northern Illinois and southern Wisconsin ("16W540 BLUFF RD", "0S064
+  # KERRY CT") are one house number, which the old rule cut to "16W".
+  # A number run into the street name ("921AIRPORT SERVICE RD", which gave
+  # "921A") is the digits alone, unless they could begin an ordinal.
+  num  <- "^[0-9]+([NSEW][0-9]+)?[A-Z]?(-[0-9]+[A-Z]?)?(?= |$)"
+  glue <- "^[0-9]+(?=[A-Z]{2})(?!(ST|ND|RD|TH))"
+  lead <- stringr::str_extract(sk, num)
+  lead <- ifelse(is.na(lead), stringr::str_extract(sk, glue), lead)
+  rest <- ifelse(is.na(lead), sk, stringr::str_squish(substring(sk, nchar(lead) + 1L)))
   box  <- stringr::str_match(sk, "BOX\\s*#?\\s*([0-9]+)")[, 2]
 
   nm_ty <- t(vapply(rest, function(r) {

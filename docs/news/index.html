@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">npnormalize</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.2</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.3</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -38,6 +38,32 @@
       <small>Source: <a href="https://github.com/Nonprofit-Open-Data-Collective/npnormalize/blob/HEAD/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.1.3" id="npnormalize-013">npnormalize 0.1.3<a class="anchor" aria-label="anchor" href="#npnormalize-013"></a></h2>
+<p>Two parsing rules that 0.1.2 carried further, found when matchdb rebuilt under it (<a href="https://github.com/Nonprofit-Open-Data-Collective/matchdb/issues/29" class="external-link">matchdb#29</a>). Neither changes <code>street_key</code>, so blocking is unaffected.</p>
+<ul><li>
+<p>A line naming several units keeps the most specific one, not the first one written. Every unit is cut from <code>street_key</code>, but <code>street_unit</code> holds one, and the first was often the one that does not tell occupants apart:</p>
+<table class="table"><thead><tr class="header"><th>raw street</th>
+<th>0.1.2 <code>street_unit</code>
+</th>
+<th>0.1.3</th>
+</tr></thead><tbody><tr class="odd"><td><code>1 BETHANY RD BUILDING 1 STE 5</code></td>
+<td><code>BLDG 1</code></td>
+<td><code>STE 5</code></td>
+</tr><tr class="even"><td><code>2125 BISCAYNE BLVD STE 204 # 22915</code></td>
+<td><code>STE 204</code></td>
+<td><code># 22915</code></td>
+</tr><tr class="odd"><td><code>1633 MAIN ST STE A PMB 175</code></td>
+<td><code>STE A</code></td>
+<td><code>PMB 175</code></td>
+</tr><tr class="even"><td><code>123 MAIN ST RM 3 FL 2</code></td>
+<td><code>RM 3</code></td>
+<td><code>RM 3</code></td>
+</tr></tbody></table><p>The rank (<code>.np_unit_rank</code>) runs building &lt; floor or area &lt; door &lt; mailbox, and between two of one rank the last wins, because an address is written from the outside in. In matchdb’s 13.0M address strings, 56,466 name two or more units, and the pick changes for 54,936 of them (17,724 current address rows), mostly a mail store’s suite giving way to the customer’s box. The second address line is read by the same rule.</p>
+</li>
+<li><p>The house number is a whole leading token. An ordinal street has none: <code>16TH ST</code> gave <code>street_num</code> <code>16T</code> and <code>street_name</code> <code>H</code>, so two such records agreed on a house number neither has. Grid numbers stay whole (<code>16W540 BLUFF   RD</code>, which gave <code>16W</code>), and a number run into the street name is its digits (<code>921AIRPORT SERVICE RD</code> gives <code>921</code> on <code>AIRPORT SERVICE</code>, not <code>921A</code> on <code>IRPORT SERVICE</code>) unless they could begin an ordinal. 19,909 of matchdb’s address strings change.</p></li>
+<li><p><strong>This moves the signature</strong>, to <code>v1-592912060053c4c3</code>. Cached <code>street_unit</code>, <code>street_unit_id</code>, <code>street_num</code> and <code>street_name</code> values must be rebuilt.</p></li>
+</ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.1.2" id="npnormalize-012">npnormalize 0.1.2<a class="anchor" aria-label="anchor" href="#npnormalize-012"></a></h2>
 <p>Two unit-extraction bugs reported from pfmatch, which parses the free-text secondary-unit line of Form 990-PF Part XIV Table 3a with this package (<a href="https://github.com/Nonprofit-Open-Data-Collective/npnormalize/issues/7" class="external-link">#7</a>).</p>

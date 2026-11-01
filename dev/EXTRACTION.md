@@ -10,7 +10,9 @@ every function name and body unchanged, so its signature stays
 > planned; the freeze that made it so ended when step 2 merged, and the first
 > normalizer fix after it is the first value change. **Published matchdb builds
 > are refused under 0.1.2 and must be rebuilt** (about 3 hours, plus the
-> uploads) — see the 0.1.2 row below.
+> uploads) — see the 0.1.2 row below. 0.1.3 moved it again, to
+> `v1-592912060053c4c3`, before that rebuild was published, so matchdb
+> rebuilds once, under 0.1.3.
 
 ## Status
 
@@ -34,6 +36,7 @@ The last three are open PRs.
 | **npnormalize 0.1.1** | **Done.** [npnormalize#4](https://github.com/Nonprofit-Open-Data-Collective/npnormalize/pull/4), tagged `v0.1.1`. It exports `np_unit_id()`, the public suite-id function step 3 needs. The signature is unchanged. |
 | **3. matchdb imports npnormalize** | **Done.** [matchdb#25](https://github.com/Nonprofit-Open-Data-Collective/matchdb/pull/25) merged on 2026-10-28 (`df48507`). matchdb requires `npnormalize (>= 0.1.1)`, calls `np_addr_key()` and `np_unit_id()` directly, only suggests npmatch, and records `npnormalize_version` in its stamps. Its tests pass (215, none skipped), and `R CMD check` gives 0 errors and 0 warnings. |
 | **npnormalize 0.1.2** | **Done.** [npnormalize#8](https://github.com/Nonprofit-Open-Data-Collective/npnormalize/pull/8), for [#7](https://github.com/Nonprofit-Open-Data-Collective/npnormalize/issues/7): `BUILDING` was missing from `.np_unit_designators` while `.np_street_types` contracted it to `BLDG`, so the two spellings of one address disagreed on both `street_key` and `street_unit`. Fixing it **moves the signature to `v1-6d90b52d8b781673`** — the first change since the move, and exactly the kind the 0.1.0 freeze existed to stop happening by accident. **Published matchdb builds are refused under 0.1.2 and must be rebuilt**, because any address spelling a unit designator out now keys differently; the restore-point pins above still reproduce the old values. matchdb's *code* needs nothing: it calls `np_unit_id()` only on `street_unit`, every canonical value round-trips through the new gate, and both macro-parity vectors in its `test-places.R` are unchanged — so `npnormalize (>= 0.1.1)` still holds, and only the artifacts are stale. Also gated the exported `np_unit_id()` and added `np_extract_unit()` (neither is in the registry). |
+| **npnormalize 0.1.3** | **Done.** Found while matchdb rebuilt under 0.1.2 ([matchdb#29](https://github.com/Nonprofit-Open-Data-Collective/matchdb/issues/29)): a line naming several units kept the first written rather than the most specific (`BUILDING 1 STE 5` kept `BLDG 1`; a mail store's `STE 204 # 22915` kept `STE 204`), and an ordinal street read as a house number (`16TH ST` gave `16T` on `H`). Both were older than 0.1.2, which only extended the first to `BUILDING`. **The signature moves to `v1-592912060053c4c3`**; `street_key` does not change. The 0.1.2 rebuild had not been published, so matchdb rebuilds once, under 0.1.3. |
 | **4. npmatch gets its reference from matchdb** | **Not started.** It needs a decision first: import matchdb, or only suggest it. |
 | **5. Downstream** | Optional. pfmatch and networked990 work unchanged through npmatch's re-exports. Their notes say what switching would mean. |
 

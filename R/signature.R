@@ -28,7 +28,7 @@
       ".np_generation", ".np_ordinals", ".np_gen_rank", ".np_directions",
       ".np_street_type_set", ".np_state_abbr", ".np_state_codes",
       ".np_unit_pat", ".np_pobox_pat", ".np_special_letters",
-      ".np_unit_designators",
+      ".np_unit_designators", ".np_unit_rank",
       ".np_core_stop", ".np_placeholder_re", ".np_placeholder_tok"
     ),
     # --- functions producing the per-row derived columns --------------------
@@ -39,7 +39,7 @@
       ".np_extract_generation", ".np_extract_numbers", ".np_extract_ordinals",
       ".np_extract_direction", ".np_extract_form", ".np_canon_form",
       ".np_strip_lead_the", ".np_strip_suffix",
-      ".np_is_pobox", ".np_extract_unit", ".np_norm_unit", ".np_unit_id",
+      ".np_is_pobox", ".np_extract_unit", ".np_pick_unit", ".np_norm_unit", ".np_unit_id",
       ".np_street_key",
       ".np_parse_street", ".np_parse_zip", ".np_to_state_abb",
       ".np_name_core", ".np_is_placeholder", ".np_clean_name",
