@@ -23,7 +23,13 @@ test_that("the signature is the pinned value", {
   #                      .np_has_box) and .np_parse_street's box gate anchored
   #                      (#9), which adds a column and moves street_num and
   #                      street_name on a street that merely carries a box.
-  expect_identical(np_normalize_signature(), "v1-1179714ce1e9d31f")
+  # v1-533f186c123357cf  0.1.5 -- a box identifier is digits OR a single
+  #                      trailing letter (#12), so the lettered boxes join
+  #                      is_po_box and lose their address key; the identifier
+  #                      is read by one helper (.np_box_identifier) that the
+  #                      key rewrite and street_num share, which also recovers
+  #                      the box number on the POB and "PO <n>" spellings.
+  expect_identical(np_normalize_signature(), "v1-533f186c123357cf")
 })
 
 test_that("the signature is stable within a session and across calls", {

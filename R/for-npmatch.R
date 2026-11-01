@@ -29,6 +29,23 @@
 #'   `np_extract_unit()`'s `unit` argument, where a bare value is accepted
 #'   because the column itself says what it is.
 #' * `np_state_abb()` maps a state name or code to its two-letter code.
+#' * `np_is_po_box()` and `np_has_box()` answer the two box questions for a
+#'   caller holding one free-text line rather than a frame: *is this street a
+#'   box* (the `is_po_box` column, the gate that blanks `np_addr_key()`), and
+#'   *does it carry a box component* (the `street_has_box` column, which is
+#'   also TRUE where a street ends in the box word and the number is carried on
+#'   line 2). They exist so that a consumer deciding whether a bare identifier
+#'   is a box number calls this package instead of keeping its own `BOX` regex:
+#'   pfmatch's did not anchor, and an unanchored `BOX` claims 127 BMF rows
+#'   whose street is merely *named* for a box (`BOX ELDER ST`, `BOX SPGS RD`).
+#' * `np_pattern()` hands out the pattern literals themselves, for a consumer
+#'   that cannot call an R function at all. matchdb is the case: DuckDB's R
+#'   client registers data frames, not scalar UDFs, so `md_place_key()` has to
+#'   be a SQL macro over a regex string. Taking the string from here keeps the
+#'   macro and [np_addr_key()] from drifting apart, which is why the patterns
+#'   are written in the subset R's engine and RE2 share -- no lookaround, no
+#'   `\\d`. `np_pattern()` is not a licence to reimplement: prefer the
+#'   functions above wherever R can be called.
 #'
 #' They are not part of the normalizer signature: each only calls functions
 #' that are ([np_normalize_signature()]), and adds nothing of its own.
@@ -49,6 +66,10 @@
 #'   [np_normalize()] writes it in `street_unit` (`"STE 300"`, `"FL 2"`,
 #'   `"# 12"`).
 #' @param state State names or codes.
+#' @param which For `np_pattern()`, which literal to return: `"pobox"` (the
+#'   `is_po_box` gate, anchored at the head of the key), `"box"` (the
+#'   `street_has_box` tail) or `"unit_id"` (the designator `np_unit_id()`
+#'   strips).
 #' @return `np_tokenize()`: a list of base and concatenated token tables.
 #'   `np_doc_freq()`: a named numeric vector of row counts per token.
 #'   `np_addr_key()`: a character vector of address keys.
@@ -56,7 +77,8 @@
 #'   address names none. `np_unit_id()`: a
 #'   character vector of suite identifiers, `NA` where there is none.
 #'   `np_state_abb()`: a character vector of two-letter codes, `NA` where none
-#'   applies.
+#'   applies. `np_is_po_box()` and `np_has_box()`: logical vectors, one value
+#'   per input line. `np_pattern()`: one regex string.
 #' @keywords internal
 #' @export
 np_tokenize <- function(frame, token_col, stopwords, min_token_len, concat_adjacent) {
@@ -82,3 +104,20 @@ np_unit_id <- function(unit) .np_unit_id(.np_extract_unit(unit))
 #' @rdname np_tokenize
 #' @export
 np_state_abb <- function(state) .np_to_state_abb(state)
+
+#' @rdname np_tokenize
+#' @export
+np_is_po_box <- function(street) .np_is_pobox(.np_street_key(street))
+
+#' @rdname np_tokenize
+#' @export
+np_has_box <- function(street) .np_has_box(.np_street_key(street))
+
+#' @rdname np_tokenize
+#' @export
+np_pattern <- function(which = c("pobox", "box", "unit_id")) {
+  switch(match.arg(which),
+         pobox   = .np_pobox_pat,
+         box     = .np_box_pat,
+         unit_id = .np_unit_id_strip)
+}

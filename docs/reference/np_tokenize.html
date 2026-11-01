@@ -11,7 +11,7 @@ of reaching into this package's internals. Most users never call them."></head><
 
     <a class="navbar-brand me-2" href="../index.html">npnormalize</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.4</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.5</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -61,7 +61,13 @@ of reaching into this package's internals. Most users never call them.</p>
 <span></span>
 <span><span class="fu">np_unit_id</span><span class="op">(</span><span class="va">unit</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu">np_state_abb</span><span class="op">(</span><span class="va">state</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">np_state_abb</span><span class="op">(</span><span class="va">state</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">np_is_po_box</span><span class="op">(</span><span class="va">street</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">np_has_box</span><span class="op">(</span><span class="va">street</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">np_pattern</span><span class="op">(</span>which <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"pobox"</span>, <span class="st">"box"</span>, <span class="st">"unit_id"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -113,6 +119,13 @@ designator to say what it is. For <code>np_unit_id()</code>, a suite as
 <dt id="arg-state">state<a class="anchor" aria-label="anchor" href="#arg-state"></a></dt>
 <dd><p>State names or codes.</p></dd>
 
+
+<dt id="arg-which">which<a class="anchor" aria-label="anchor" href="#arg-which"></a></dt>
+<dd><p>For <code>np_pattern()</code>, which literal to return: <code>"pobox"</code> (the
+<code>is_po_box</code> gate, anchored at the head of the key), <code>"box"</code> (the
+<code>street_has_box</code> tail) or <code>"unit_id"</code> (the designator <code>np_unit_id()</code>
+strips).</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
@@ -123,7 +136,8 @@ designator to say what it is. For <code>np_unit_id()</code>, a suite as
 address names none. <code>np_unit_id()</code>: a
 character vector of suite identifiers, <code>NA</code> where there is none.
 <code>np_state_abb()</code>: a character vector of two-letter codes, <code>NA</code> where none
-applies.</p>
+applies. <code>np_is_po_box()</code> and <code>np_has_box()</code>: logical vectors, one value
+per input line. <code>np_pattern()</code>: one regex string.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
@@ -152,6 +166,23 @@ record counter as a door; pass a dedicated unit column as
 <code>np_extract_unit()</code>'s <code>unit</code> argument, where a bare value is accepted
 because the column itself says what it is.</p></li>
 <li><p><code>np_state_abb()</code> maps a state name or code to its two-letter code.</p></li>
+<li><p><code>np_is_po_box()</code> and <code>np_has_box()</code> answer the two box questions for a
+caller holding one free-text line rather than a frame: <em>is this street a
+box</em> (the <code>is_po_box</code> column, the gate that blanks <code>np_addr_key()</code>), and
+<em>does it carry a box component</em> (the <code>street_has_box</code> column, which is
+also TRUE where a street ends in the box word and the number is carried on
+line 2). They exist so that a consumer deciding whether a bare identifier
+is a box number calls this package instead of keeping its own <code>BOX</code> regex:
+pfmatch's did not anchor, and an unanchored <code>BOX</code> claims 127 BMF rows
+whose street is merely <em>named</em> for a box (<code>BOX ELDER ST</code>, <code>BOX SPGS RD</code>).</p></li>
+<li><p><code>np_pattern()</code> hands out the pattern literals themselves, for a consumer
+that cannot call an R function at all. matchdb is the case: DuckDB's R
+client registers data frames, not scalar UDFs, so <code>md_place_key()</code> has to
+be a SQL macro over a regex string. Taking the string from here keeps the
+macro and <code>np_addr_key()</code> from drifting apart, which is why the patterns
+are written in the subset R's engine and RE2 share – no lookaround, no
+<code>\\d</code>. <code>np_pattern()</code> is not a licence to reimplement: prefer the
+functions above wherever R can be called.</p></li>
 </ul><p>They are not part of the normalizer signature: each only calls functions
 that are (<code><a href="np_normalize_signature.html">np_normalize_signature()</a></code>), and adds nothing of its own.</p>
     </div>

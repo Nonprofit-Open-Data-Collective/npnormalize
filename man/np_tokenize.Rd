@@ -7,6 +7,9 @@
 \alias{np_extract_unit}
 \alias{np_unit_id}
 \alias{np_state_abb}
+\alias{np_is_po_box}
+\alias{np_has_box}
+\alias{np_pattern}
 \title{Internals npmatch and matchdb call}
 \usage{
 np_tokenize(frame, token_col, stopwords, min_token_len, concat_adjacent)
@@ -20,6 +23,12 @@ np_extract_unit(street, unit = NULL)
 np_unit_id(unit)
 
 np_state_abb(state)
+
+np_is_po_box(street)
+
+np_has_box(street)
+
+np_pattern(which = c("pobox", "box", "unit_id"))
 }
 \arguments{
 \item{frame}{A data frame holding \code{token_col}.}
@@ -47,6 +56,11 @@ designator to say what it is. For \code{np_unit_id()}, a suite as
 \code{"# 12"}).}
 
 \item{state}{State names or codes.}
+
+\item{which}{For \code{np_pattern()}, which literal to return: \code{"pobox"} (the
+\code{is_po_box} gate, anchored at the head of the key), \code{"box"} (the
+\code{street_has_box} tail) or \code{"unit_id"} (the designator \code{np_unit_id()}
+strips).}
 }
 \value{
 \code{np_tokenize()}: a list of base and concatenated token tables.
@@ -56,7 +70,8 @@ designator to say what it is. For \code{np_unit_id()}, a suite as
 address names none. \code{np_unit_id()}: a
 character vector of suite identifiers, \code{NA} where there is none.
 \code{np_state_abb()}: a character vector of two-letter codes, \code{NA} where none
-applies.
+applies. \code{np_is_po_box()} and \code{np_has_box()}: logical vectors, one value
+per input line. \code{np_pattern()}: one regex string.
 }
 \description{
 Thin, exported wrappers around six internal helpers. npmatch's blocking,
@@ -90,6 +105,23 @@ record counter as a door; pass a dedicated unit column as
 \code{np_extract_unit()}'s \code{unit} argument, where a bare value is accepted
 because the column itself says what it is.
 \item \code{np_state_abb()} maps a state name or code to its two-letter code.
+\item \code{np_is_po_box()} and \code{np_has_box()} answer the two box questions for a
+caller holding one free-text line rather than a frame: \emph{is this street a
+box} (the \code{is_po_box} column, the gate that blanks \code{np_addr_key()}), and
+\emph{does it carry a box component} (the \code{street_has_box} column, which is
+also TRUE where a street ends in the box word and the number is carried on
+line 2). They exist so that a consumer deciding whether a bare identifier
+is a box number calls this package instead of keeping its own \code{BOX} regex:
+pfmatch's did not anchor, and an unanchored \code{BOX} claims 127 BMF rows
+whose street is merely \emph{named} for a box (\verb{BOX ELDER ST}, \verb{BOX SPGS RD}).
+\item \code{np_pattern()} hands out the pattern literals themselves, for a consumer
+that cannot call an R function at all. matchdb is the case: DuckDB's R
+client registers data frames, not scalar UDFs, so \code{md_place_key()} has to
+be a SQL macro over a regex string. Taking the string from here keeps the
+macro and \code{\link[=np_addr_key]{np_addr_key()}} from drifting apart, which is why the patterns
+are written in the subset R's engine and RE2 share -- no lookaround, no
+\verb{\\\\d}. \code{np_pattern()} is not a licence to reimplement: prefer the
+functions above wherever R can be called.
 }
 
 They are not part of the normalizer signature: each only calls functions
