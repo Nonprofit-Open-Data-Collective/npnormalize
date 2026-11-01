@@ -241,7 +241,19 @@
 #' * `street_unit_id` the identifier alone, separators dropped ("STE D-2" ->
 #'   "D2"). Two records are compared on this, so a BMF "STE 300" and a source
 #'   "# 300" are recognised as one office
-#' * `is_po_box`    `TRUE` if the street is a PO box (any variant), else `FALSE`
+#' * `is_po_box`    `TRUE` if the street *is* a PO box (any variant), else
+#'   `FALSE`. This is the gate that blanks the address key in [np_addr_key()]:
+#'   a box number is the address, so counting records at one counts the box's
+#'   owners rather than a building's tenants
+#' * `street_has_box` `TRUE` if the street *carries* a box component, whether or
+#'   not the whole street is one, so `is_po_box` implies `street_has_box`.
+#'   `211 EMMET ST S PO BOX`, `300 KENAN CENTER DR CAMPUS BOX` and `PO BOX A`
+#'   are all `TRUE` while `is_po_box` is `FALSE` on each. Filers write the
+#'   street on line 1 and carry the box *number* alone on line 2; this is the
+#'   column that says a bare number from that line may be a box rather than a
+#'   door. It does not claim that it *is* -- the street can name a suite too
+#'   (`4347 W NORTHWEST HWY STE 130 BOX`), and that call belongs to whoever
+#'   holds the second line. `street_unit` is not changed by it
 #' * `zip5`         five-digit ZIP, leading zeros restored (nested prefix)
 #' * `zip3`         three-digit ZIP prefix / SCF region (nested prefix)
 #' * `zip9`         full `xxxxx-xxxx` ZIP when the +4 is known, else `NA`
@@ -295,6 +307,8 @@ np_normalize <- function(data) {
   sk[pob] <- ifelse(!is.na(box[pob]), paste("PO BOX", box[pob]), "PO BOX")
   data$street_key <- sk
   data$is_po_box  <- pob
+  # Read from the rewritten key, so is_po_box implies street_has_box.
+  data$street_has_box <- .np_has_box(sk)
   sp <- .np_parse_street(sk)
   data$street_num  <- sp$street_num
   data$street_name <- sp$street_name
@@ -528,6 +542,45 @@ np_name_rules <- function() {
 .np_is_pobox <- function(street_key) {
   s <- toupper(as.character(street_key)); s[is.na(s)] <- ""
   grepl(.np_pobox_pat, s)
+}
+
+# A box component anywhere on the street, which is a different question from
+# .np_is_pobox's "is this street a box" (#9). Filers routinely write the street
+# on line 1 ending in the box WORD and carry the box NUMBER alone on line 2, so
+# a consumer holding a bare line-2 number has no way to tell a box number from
+# a door without this.
+#
+# The box word must END the key, with at most an identifier after it. Measured
+# over 3,687,435 BMF address strings (dev/scan-box-component.R):
+#
+#   * The anchored form is 16.014% of rows by itself. Ending the key adds
+#     11,982 rows (0.325%) that .np_is_pobox does not see, in three shapes:
+#     a street then a bare BOX (562 rows -- the reported case,
+#     "211 EMMET ST S PO BOX"), a street then BOX <number> (10,345, led by
+#     "ONE HARRISON PLZ BOX 5079"), and a lettered box (1,075, "PO BOX A"
+#     through "PO BOX Z", which .np_pobox_pat misses because it requires
+#     digits).
+#   * Dropping the end anchor -- a bare \bBOX\b -- matches 2,099 rows this does
+#     not, and 127 of them are streets NAMED for a box: BOX SPGS RD, BOX ELDER
+#     ST, BOX RD. The anchored form catches 1 of those 405 rows
+#     ("COLLEGEHALL BOXH", which is a box). BOXWOOD, BOXDALE and BOXFORD never
+#     match either way, on the word boundary alone.
+#   * An identifier is digits or a SINGLE letter, because that is the whole of
+#     the lettered-box family and two letters is the next word of a street name
+#     ("BOX RD", "BOX ELDER").
+#   * DRAWER and BIN were measured and left out: 55 and 28 rows, against 2
+#     false positives already visible at that volume (GRAIN BIN RD). POST
+#     OFFICE BOX never survives .np_street_types. LOCKBOX is 2 rows.
+#
+# The pattern is read against the key np_normalize() publishes, i.e. AFTER the
+# "PO BOX <n>" rewrite, which is what makes is_po_box => street_has_box hold on
+# every row (the test asserts it) and lets a consumer recompute the flag from a
+# cached street_key.
+.np_box_pat <- "\\bBOX ?#? ?(?:[0-9]+|[A-Z])?$"
+
+.np_has_box <- function(street_key) {
+  s <- toupper(as.character(street_key)); s[is.na(s)] <- ""
+  grepl(.np_box_pat, s)
 }
 
 # The unit as written, normalized to "<canonical designator> <id>" ("STE 300",
@@ -845,7 +898,14 @@ np_token_idf <- function(name_keys, stopwords = np_stopwords(), min_token_len = 
 # the box number becomes street_num and street_name is "PO BOX".
 .np_parse_street <- function(street_key) {
   sk <- toupper(as.character(street_key)); sk[is.na(sk)] <- ""
-  is_po <- grepl("\\bBOX\\b", sk)
+  # A box is the ANCHORED form, the one is_po_box reports -- not any BOX
+  # anywhere. The old unanchored test overwrote the parse of 14,014 BMF rows
+  # (0.380%) whose street merely carries or is named for a box: it gave
+  # "ONE HARRISON PLZ BOX 5079" street_num 5079 on street_name "PO BOX", and
+  # "22009 BOX ELDER RD" lost its house number to street_name "PO BOX" while
+  # is_po_box said FALSE on the same row. See .np_box_pat for the measurement
+  # and for street_has_box, which is how a caller asks the other question.
+  is_po <- .np_is_pobox(sk)
   # The house number is a whole leading token. Without the lookahead an ordinal
   # street was read as one: "16TH ST" gave street_num "16T" and street_name "H",
   # and "6TH AND CHESTNUT ST" gave "6T" and "H AND CHESTNUT". The grid numbers

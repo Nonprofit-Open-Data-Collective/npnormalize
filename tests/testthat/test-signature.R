@@ -19,7 +19,11 @@ test_that("the signature is the pinned value", {
   #                      specific (.np_unit_rank, .np_pick_unit), and the house
   #                      number is a whole token (.np_parse_street), which moves
   #                      street_unit, street_unit_id, street_num and street_name.
-  expect_identical(np_normalize_signature(), "v1-592912060053c4c3")
+  # v1-1179714ce1e9d31f  0.1.4 -- street_has_box added (.np_box_pat,
+  #                      .np_has_box) and .np_parse_street's box gate anchored
+  #                      (#9), which adds a column and moves street_num and
+  #                      street_name on a street that merely carries a box.
+  expect_identical(np_normalize_signature(), "v1-1179714ce1e9d31f")
 })
 
 test_that("the signature is stable within a session and across calls", {

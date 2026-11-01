@@ -1,18 +1,31 @@
+<div id="main" class="col-md-9" role="main">
+
 # Name-normalization rule tables
 
-The tables
-[`np_normalize()`](https://nonprofit-open-data-collective.github.io/npnormalize/reference/np_normalize.md)
-uses, for packages that need the same rules in another engine (for
-example a DuckDB SQL macro). A port should be checked against
-[`np_name_core()`](https://nonprofit-open-data-collective.github.io/npnormalize/reference/np_name_core.md)
-on test strings; the tables are covered by
-[`np_normalize_signature()`](https://nonprofit-open-data-collective.github.io/npnormalize/reference/np_normalize_signature.md).
+<div class="ref-description section level2">
+
+The tables `np_normalize()` uses, for packages that need the same rules
+in another engine (for example a DuckDB SQL macro). A port should be
+checked against `np_name_core()` on test strings; the tables are covered
+by `np_normalize_signature()`.
+
+</div>
+
+<div class="section level2">
 
 ## Usage
+
+<div class="sourceCode">
 
 ``` r
 np_name_rules()
 ```
+
+</div>
+
+</div>
+
+<div class="section level2">
 
 ## Value
 
@@ -22,3 +35,7 @@ stripped from `name_key`), `special_letters` (named character, a
 non-decomposable Latin letter to its ASCII spelling, folded before
 de-accenting), `placeholder_re` (a Perl regex on the raw upper-cased
 name) and `placeholder_tok`.
+
+</div>
+
+</div>

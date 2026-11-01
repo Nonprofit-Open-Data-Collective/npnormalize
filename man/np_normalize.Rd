@@ -47,7 +47,19 @@ or from the \code{unit} column when the street line names none
 \item \code{street_unit_id} the identifier alone, separators dropped ("STE D-2" ->
 "D2"). Two records are compared on this, so a BMF "STE 300" and a source
 "# 300" are recognised as one office
-\item \code{is_po_box}    \code{TRUE} if the street is a PO box (any variant), else \code{FALSE}
+\item \code{is_po_box}    \code{TRUE} if the street \emph{is} a PO box (any variant), else
+\code{FALSE}. This is the gate that blanks the address key in \code{\link[=np_addr_key]{np_addr_key()}}:
+a box number is the address, so counting records at one counts the box's
+owners rather than a building's tenants
+\item \code{street_has_box} \code{TRUE} if the street \emph{carries} a box component, whether or
+not the whole street is one, so \code{is_po_box} implies \code{street_has_box}.
+\verb{211 EMMET ST S PO BOX}, \verb{300 KENAN CENTER DR CAMPUS BOX} and \verb{PO BOX A}
+are all \code{TRUE} while \code{is_po_box} is \code{FALSE} on each. Filers write the
+street on line 1 and carry the box \emph{number} alone on line 2; this is the
+column that says a bare number from that line may be a box rather than a
+door. It does not claim that it \emph{is} -- the street can name a suite too
+(\verb{4347 W NORTHWEST HWY STE 130 BOX}), and that call belongs to whoever
+holds the second line. \code{street_unit} is not changed by it
 \item \code{zip5}         five-digit ZIP, leading zeros restored (nested prefix)
 \item \code{zip3}         three-digit ZIP prefix / SCF region (nested prefix)
 \item \code{zip9}         full \code{xxxxx-xxxx} ZIP when the +4 is known, else \code{NA}

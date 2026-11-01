@@ -105,6 +105,76 @@ test_that("a unit in the second address line is read, not ignored", {
   expect_equal(q2$street_unit_id, rep("410", 3))
 })
 
+test_that("street_has_box asks whether the street CARRIES a box, not whether it is one", {
+  # #9: filers write the street on line 1 ending in the box WORD and carry the
+  # box NUMBER alone on line 2, so a consumer holding a bare line-2 number has
+  # nothing to tell a box number from a door. is_po_box cannot answer it -- it
+  # is the gate that blanks the address key, and these are genuine streets that
+  # should still block and still be counted.
+  d <- np_test_frame(
+    .ein = sprintf("%02d", 1:8), name = "ACME", state = "VA",
+    street = c("211 EMMET STREET SOUTH PO BOX", "300 KENAN CENTER DRIVE - CAMPUS BOX",
+               "4347 W NORTHWEST HWY STE 130 BOX", "ONE HARRISON PLAZA BOX 5079",
+               "PO BOX A", "PO BOX 1367", "22009 BOX ELDER RD", "500 MAIN ST"))
+  o <- np_normalize(d)
+  expect_equal(o$street_has_box, c(rep(TRUE, 6), FALSE, FALSE))
+  # and the first five are NOT boxes: the street key is kept, so they still block
+  expect_equal(o$is_po_box, c(rep(FALSE, 5), TRUE, FALSE, FALSE))
+  expect_equal(o$street_key[1], "211 EMMET ST S PO BOX")
+  expect_true(nzchar(np_addr_key(o$street_key[1], o$zip5[1])))
+})
+
+test_that("is_po_box implies street_has_box, and a BOX-named street implies neither", {
+  # The implication is why the flag is read from the REWRITTEN key: a caller
+  # with a cached street_key can recompute it, and no row can be a box without
+  # carrying one. Asserted over every PO-box spelling .np_pobox_pat knows.
+  # ("PO BOX #12" is not here: .np_unit_pat reads "#12" as a suite before the
+  # street key is built, so that spelling keys as "PO BOX" with is_po_box
+  # FALSE. street_has_box is TRUE either way, and the spelling does not occur
+  # in the BMF at all -- 0 of 3,687,435 rows -- so there is nothing to measure
+  # a fix against here.)
+  boxes <- c("PO BOX 12", "P O BOX 12", "POBOX 12", "POB 12", "PO B 12",
+             "PO 12", "P O 12", "BOX 12")
+  d <- np_test_frame(.ein = sprintf("%02d", seq_along(boxes)), name = "ACME",
+                     state = "TX", street = boxes)
+  o <- np_normalize(d)
+  expect_true(all(o$is_po_box))
+  expect_true(all(o$street_has_box))
+
+  # The end anchor is the whole guard. Dropping it would flag 127 BMF rows that
+  # are streets NAMED for a box (dev/scan-box-component.R); the word boundary
+  # alone handles BOXWOOD and BOXER, the anchor is what handles BOX ELDER.
+  named <- c("22009 BOX ELDER RD", "21150 BOX SPRINGS RD", "2027 BOX RD",
+             "55 BOXWOOD LANE", "1 BOXER ST", "3509 BOXDALE ST", "37 BOXFORD RD")
+  d2 <- np_test_frame(.ein = sprintf("%02d", seq_along(named)), name = "ACME",
+                      state = "UT", street = named)
+  o2 <- np_normalize(d2)
+  expect_false(any(o2$street_has_box))
+  expect_false(any(o2$is_po_box))
+
+  # DRAWER and BIN were measured and left out (55 and 28 rows), so they are not
+  # box words here; a missing street is not a box either.
+  d3 <- np_test_frame(.ein = c("1", "2", "3", "4"), name = "ACME", state = "GA",
+                      street = c("PO DRAWER 220", "1535 W JEFFERSON ST BIN 42", NA, ""))
+  expect_false(any(np_normalize(d3)$street_has_box))
+})
+
+test_that("the street parse treats only an ANCHORED box as a box", {
+  # The gate was an unanchored grepl("\\bBOX\\b"), which overwrote the parse of
+  # 14,014 BMF rows (0.380%) whose street merely carries or is named for a box.
+  k <- c("ONE HARRISON PLZ BOX 5079", "22009 BOX ELDER RD", "2027 BOX RD",
+         "211 EMMET ST S PO BOX", "PO BOX 12", "PO BOX")
+  p <- .np_parse_street(k)
+  # a BOX-named street keeps its house number and its type, where it used to
+  # lose both to street_num 5079 / street_name "PO BOX"
+  expect_equal(p$street_num, c(NA, "22009", "2027", "211", "12", NA))
+  expect_equal(p$street_name, c("ONE HARRISON PLZ BOX 5079", "BOX ELDER", "BOX",
+                                "EMMET ST S PO BOX", "PO BOX", "PO BOX"))
+  expect_equal(p$street_type, c(NA, "RD", "RD", NA, NA, NA))
+  # the parse and the flag can no longer disagree about what a box is
+  expect_equal(p$street_name == "PO BOX" & !is.na(p$street_num), .np_is_pobox(k))
+})
+
 test_that("np_addr_freq counts tenants per address and per suite, PO boxes aside", {
   af <- np_addr_freq(
     street_keys = c("430 W 7TH AVE", "430 W 7TH AVE", "430 W 7TH AVE",

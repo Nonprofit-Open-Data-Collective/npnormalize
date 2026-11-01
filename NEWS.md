@@ -1,3 +1,77 @@
+# npnormalize 0.1.4
+
+A new address column asked for in
+[#9](https://github.com/Nonprofit-Open-Data-Collective/npnormalize/issues/9),
+and a defect the measurement for it turned up. Both were measured against the
+3,687,435-row unified BMF; the scan is `dev/scan-box-component.R`, kept as the
+record, the way `scan-unit-designators.R` is for the designator list.
+
+* **`street_has_box`**, a second question about a box: does the street *carry*
+  a box component, whether or not the whole street is one. `is_po_box` cannot
+  answer it and should not be widened to — it is the gate that blanks the
+  address key in `np_addr_key()`, so widening it would stop counting records at
+  streets that are genuine buildings. Filers write the street on line 1 ending
+  in the box *word* and carry the box *number* alone on line 2, and a consumer
+  holding that bare number had nothing to tell a box number from a door:
+
+  | raw street | `street_key` | `is_po_box` | `street_has_box` |
+  |---|---|---|---|
+  | `211 EMMET STREET SOUTH PO BOX` | `211 EMMET ST S PO BOX` | `FALSE` | `TRUE` |
+  | `300 KENAN CENTER DRIVE - CAMPUS BOX` | `300 KENAN CENTER DR CAMPUS BOX` | `FALSE` | `TRUE` |
+  | `ONE HARRISON PLAZA BOX 5079` | `ONE HARRISON PLAZA BOX 5079` | `FALSE` | `TRUE` |
+  | `PO BOX A` | `PO BOX A` | `FALSE` | `TRUE` |
+  | `PO BOX 1367` | `PO BOX 1367` | `TRUE` | `TRUE` |
+  | `22009 BOX ELDER RD` | `22009 BOX ELDER RD` | `FALSE` | `FALSE` |
+
+  `is_po_box` implies `street_has_box` on every row, because the flag is read
+  from the key `np_normalize()` publishes — so a consumer holding a cached
+  `street_key` can recompute it without re-normalizing.
+
+  The box word has to **end** the key, with at most digits or a single letter
+  after it. That anchor is the whole guard, and the reason the pattern is not
+  the unanchored `BOX` pfmatch keeps locally: a bare `\bBOX\b` matches 2,099
+  rows the anchored form does not, and 127 of them are streets *named* for a
+  box (`BOX SPGS RD`,
+  `BOX ELDER ST`, `BOX RD`). The anchored form flags 1 of those 405 rows, and
+  that one is a box. `BOXWOOD` and `BOXER` never match either way.
+
+  The flag adds 11,982 rows (0.325%) to the 579,602 `is_po_box` already
+  reports: 562 a street then a bare `BOX`, 10,345 a street then `BOX <number>`,
+  and 1,075 a lettered box (`PO BOX A` … `PO BOX Z`, which `.np_pobox_pat`
+  misses because it requires digits). `DRAWER` and `BIN` were measured and left
+  out at 55 and 28 rows, against a false positive already visible at that
+  volume (`1206 GRAIN BIN RD`).
+
+  **`street_unit` is deliberately not changed by this.** The flag says the
+  street has a box, not that a companion number is that box's — the street can
+  name a suite as well (`4347 W NORTHWEST HWY STE 130 BOX`), and that call
+  belongs to whoever holds the second line. 0.1.2 already removed the sharp
+  edge by making `np_unit_id("400891")` `NA`; this adds the positive signal a
+  consumer can key on, and lets pfmatch replace its local `.PF_BOX_RE` with a
+  column.
+* **`.np_parse_street()` now treats only an anchored box as a box.** Its gate
+  was an unanchored `grepl("\\bBOX\\b")`, which overwrote the parse of 14,014
+  BMF rows (0.380%) whose street merely carries or is named for a box, on rows
+  where `is_po_box` said `FALSE`:
+
+  | `street_key` | 0.1.3 `street_num` / `street_name` | 0.1.4 |
+  |---|---|---|
+  | `ONE HARRISON PLZ BOX 5079` | `5079` / `PO BOX` | `NA` / `ONE HARRISON PLZ BOX 5079` |
+  | `22009 BOX ELDER RD` | `NA` / `PO BOX` | `22009` / `BOX ELDER` (type `RD`) |
+  | `211 EMMET ST S PO BOX` | `NA` / `PO BOX` | `211` / `EMMET ST S PO BOX` |
+  | `PO BOX 12` | `12` / `PO BOX` | `12` / `PO BOX` |
+
+  A BOX-named street used to lose its house number to a box number it does not
+  have, and two records agreed on a `street_num` neither had. The parse and
+  `is_po_box` can no longer disagree about what a box is, which a test asserts.
+* **This moves the signature**, to `v1-1179714ce1e9d31f`. `street_has_box` is a
+  new cached column and `street_num` / `street_name` move on the rows above, so
+  matchdb must rebuild its derived columns again — the 0.1.3 rebuild
+  ([matchdb#29](https://github.com/Nonprofit-Open-Data-Collective/matchdb/issues/29))
+  had already closed, so this does not ride along with it.
+* npmatch needs no change: it reads `is_po_box` only for `geo_pobox`, and the
+  new column is additive.
+
 # npnormalize 0.1.3
 
 Two parsing rules that 0.1.2 carried further, found when matchdb rebuilt under

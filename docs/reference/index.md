@@ -1,52 +1,100 @@
+<div id="main" class="col-md-9" role="main">
+
 # Package index
+
+<div class="section level2">
 
 ## Normalize records
 
+<div class="section-desc">
+
 Turn names and addresses into keys that can be matched.
 
-- [`np_normalize()`](https://nonprofit-open-data-collective.github.io/npnormalize/reference/np_normalize.md)
-  : Normalize a query or reference frame
-- [`np_name_core()`](https://nonprofit-open-data-collective.github.io/npnormalize/reference/np_name_core.md)
-  [`np_name_placeholder()`](https://nonprofit-open-data-collective.github.io/npnormalize/reference/np_name_core.md)
-  : Exact-lookup name key and placeholder check for raw name strings
+</div>
+
+</div>
+
+<div class="section level2">
+
+-   `np_normalize()` : Normalize a query or reference frame
+-   `np_name_core()` `np_name_placeholder()` : Exact-lookup name key and
+    placeholder check for raw name strings
+
+</div>
+
+<div class="section level2">
 
 ## Statistics over the keys
+
+<div class="section-desc">
 
 Count how common names, tokens and addresses are, for weighting and
 blocking.
 
-- [`np_name_freq()`](https://nonprofit-open-data-collective.github.io/npnormalize/reference/np_name_freq.md)
-  : Name-key frequency table for a reference corpus
-- [`np_token_idf()`](https://nonprofit-open-data-collective.github.io/npnormalize/reference/np_token_idf.md)
-  : Per-token inverse document frequency for a reference corpus
-- [`np_addr_freq()`](https://nonprofit-open-data-collective.github.io/npnormalize/reference/np_addr_freq.md)
-  : Address-sharing statistics for a reference corpus
+</div>
+
+</div>
+
+<div class="section level2">
+
+-   `np_name_freq()` : Name-key frequency table for a reference corpus
+-   `np_token_idf()` : Per-token inverse document frequency for a
+    reference corpus
+-   `np_addr_freq()` : Address-sharing statistics for a reference corpus
+
+</div>
+
+<div class="section level2">
 
 ## The signature
+
+<div class="section-desc">
 
 Fingerprint the normalizer so stored keys can refuse to load under a
 different one.
 
-- [`np_normalize_signature()`](https://nonprofit-open-data-collective.github.io/npnormalize/reference/np_normalize_signature.md)
-  : Fingerprint the normalizer
+</div>
+
+</div>
+
+<div class="section level2">
+
+-   `np_normalize_signature()` : Fingerprint the normalizer
+
+</div>
+
+<div class="section level2">
 
 ## Building blocks
 
+<div class="section-desc">
+
 Tokenizers, stopwords and the rule tables the keys are built from.
 
-- [`np_tokenize()`](https://nonprofit-open-data-collective.github.io/npnormalize/reference/np_tokenize.md)
-  [`np_doc_freq()`](https://nonprofit-open-data-collective.github.io/npnormalize/reference/np_tokenize.md)
-  [`np_addr_key()`](https://nonprofit-open-data-collective.github.io/npnormalize/reference/np_tokenize.md)
-  [`np_unit_id()`](https://nonprofit-open-data-collective.github.io/npnormalize/reference/np_tokenize.md)
-  [`np_state_abb()`](https://nonprofit-open-data-collective.github.io/npnormalize/reference/np_tokenize.md)
-  : Internals npmatch and matchdb call
-- [`np_stopwords()`](https://nonprofit-open-data-collective.github.io/npnormalize/reference/np_stopwords.md)
-  : Blocking stopwords
-- [`np_name_rules()`](https://nonprofit-open-data-collective.github.io/npnormalize/reference/np_name_rules.md)
-  : Name-normalization rule tables
+</div>
+
+</div>
+
+<div class="section level2">
+
+-   `np_tokenize()` `np_doc_freq()` `np_addr_key()` `np_extract_unit()`
+    `np_unit_id()` `np_state_abb()` : Internals npmatch and matchdb call
+-   `np_stopwords()` : Blocking stopwords
+-   `np_name_rules()` : Name-normalization rule tables
+
+</div>
+
+<div class="section level2">
 
 ## Package
 
-- [`npnormalize`](https://nonprofit-open-data-collective.github.io/npnormalize/reference/npnormalize-package.md)
-  [`npnormalize-package`](https://nonprofit-open-data-collective.github.io/npnormalize/reference/npnormalize-package.md)
-  : npnormalize: nonprofit names and addresses as matchable keys
+</div>
+
+<div class="section level2">
+
+-   `npnormalize` `npnormalize-package` : npnormalize: nonprofit names
+    and addresses as matchable keys
+
+</div>
+
+</div>

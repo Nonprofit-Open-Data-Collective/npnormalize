@@ -50,7 +50,7 @@ when present.
 * name keys: `name_key`, `name_full`, `name_core`, `dba_key`;
 * name features: `name_form`, `name_nums`, `name_ord`, `name_placeholder`;
 * street parts: `street_key`, `street_num`, `street_name`, `street_type`,
-  `street_unit`, `street_unit_id`, `is_po_box`;
+  `street_unit`, `street_unit_id`, `is_po_box`, `street_has_box`;
 * ZIP parts: `zip5`, `zip3`, `zip9`;
 * `state_abb`.
 
@@ -68,7 +68,7 @@ when present.
 
 ```r
 np_normalize_signature()
-#> [1] "v1-592912060053c4c3"
+#> [1] "v1-1179714ce1e9d31f"
 ```
 
 The signature is a hash of the rule tables and functions behind the keys and
