@@ -241,14 +241,18 @@
 #' * `street_unit_id` the identifier alone, separators dropped ("STE D-2" ->
 #'   "D2"). Two records are compared on this, so a BMF "STE 300" and a source
 #'   "# 300" are recognised as one office
-#' * `is_po_box`    `TRUE` if the street *is* a PO box (any variant), else
-#'   `FALSE`. This is the gate that blanks the address key in [np_addr_key()]:
-#'   a box number is the address, so counting records at one counts the box's
-#'   owners rather than a building's tenants
+#' * `is_po_box`    `TRUE` if the street *is* a PO box, else `FALSE`. Any
+#'   spelling of the designator (`PO BOX 12`, `P O BOX 12`, `POBOX 12`,
+#'   `POB 12`, `PO B 12`, `PO 12`, `BOX 12`) and any identifier -- digits, or a
+#'   single letter where the key ends, so the lettered boxes `PO BOX A` through
+#'   `PO BOX Z` count as boxes too. This is the gate that blanks the address
+#'   key in [np_addr_key()]: a box number is the address, so counting records
+#'   at one counts the box's owners rather than a building's tenants
 #' * `street_has_box` `TRUE` if the street *carries* a box component, whether or
 #'   not the whole street is one, so `is_po_box` implies `street_has_box`.
-#'   `211 EMMET ST S PO BOX`, `300 KENAN CENTER DR CAMPUS BOX` and `PO BOX A`
-#'   are all `TRUE` while `is_po_box` is `FALSE` on each. Filers write the
+#'   `211 EMMET ST S PO BOX`, `300 KENAN CENTER DR CAMPUS BOX` and
+#'   `ONE HARRISON PLZ BOX 5079` are all `TRUE` while `is_po_box` is `FALSE` on
+#'   each. Filers write the
 #'   street on line 1 and carry the box *number* alone on line 2; this is the
 #'   column that says a bare number from that line may be a box rather than a
 #'   door. It does not claim that it *is* -- the street can name a suite too
@@ -303,7 +307,7 @@ np_normalize <- function(data) {
   data$street_unit_id <- .np_unit_id(data$street_unit)
   sk  <- .np_street_key(data$street)
   pob <- .np_is_pobox(sk)
-  box <- stringr::str_extract(sk, "[0-9]+")               # PO boxes carry one number
+  box <- .np_box_identifier(sk)              # a number, or a lettered box's letter
   sk[pob] <- ifelse(!is.na(box[pob]), paste("PO BOX", box[pob]), "PO BOX")
   data$street_key <- sk
   data$is_po_box  <- pob
@@ -534,14 +538,67 @@ np_name_rules <- function() {
          "|\\b(?:", d, ")(?:[ .,]*#?[ .,]*", nm, "|[ .,]+#?[ .,]*", al, "))\\b")
 })
 
-# PO-box variants on an already-cleaned street key: "PO BOX 12", "P O BOX 12",
-# "POBOX 12", "POB 12", "PO B 12", "PO 12", "P O 12", "BOX 12". Ordered so the
-# longest prefix wins; each must be followed by the box number.
-.np_pobox_pat <- "^(P ?O ?BOX|P ?O ?B|BOX|P ?O) ?#? ?[0-9]+"
+# One box vocabulary, composed into the patterns below. Nothing downstream
+# should hold a copy: np_pattern() hands these strings to a consumer that
+# cannot call an R function -- matchdb's DuckDB macros are the reason it exists
+# -- so every piece stays inside the regex subset R's own engine and RE2 share.
+# No lookaround (TRE rejects it too, without perl = TRUE), no \d, no named
+# classes. test-portability.R runs the composed patterns through both engines
+# over one fixture and asserts they agree, which is what keeps a SQL copy
+# honest rather than merely hand-ported.
+#
+# Head designators on an already-cleaned street key, longest prefix first:
+# "PO BOX 12", "P O BOX 12", "POBOX 12", "POB 12", "PO B 12", "PO 12",
+# "P O 12", "BOX 12".
+.np_box_head <- c("P ?O ?BOX", "P ?O ?B", "BOX", "P ?O")
+
+# A box identifier is digits, or a single letter where the key ENDS. Measured
+# over 3,687,435 BMF address strings (dev/audit-pobox.R):
+#
+#   * digits alone are 579,602 rows (15.718%), in four spellings: PO BOX
+#     578,684 rows, a bare BOX 682, PO / P O with no box word 164, POB / PO B
+#     72. Nothing else in the corpus is detected -- PB, BX, POSTAL, APARTADO,
+#     DRAWER and POST OFFICE BOX are all 0 (see dev/audit-pobox.R section C,
+#     and #13 for what that leaves undetected).
+#   * a trailing single letter adds 1,010 rows (0.027%) in 41 keys. 982 of them
+#     are "PO BOX A" through "PO BOX Z" -- the whole alphabet, led by B (119)
+#     and A (116). There is no building at PO BOX Q, but this pattern required
+#     digits, so every one escaped the np_addr_key() blank and was counted as a
+#     shared building: 105 of their 825 address keys hold two or more EINs, up
+#     to 15 at "PO BOX B 75785" (#12).
+#   * the other 28 rows are box lines truncated or garbled in the filing --
+#     "PO BO", "POB", "BOX R". No street in the corpus has a whole key of a
+#     designator followed by one letter.
+#   * the letter must be ANCHORED, and only the letter. Unanchored, a single
+#     letter as its own token takes those 41 keys to 237, and dropping the
+#     anchor entirely reaches "POST OFC" and "PO BO" shapes that are not
+#     identifiers at all. A box NUMBER, though, is routinely followed by more
+#     text -- 1,141 rows carry a mail stop ("PO BOX 5371 MSC RC 507") and 136
+#     carry a street as well -- so anchoring the whole identifier would drop
+#     them. The test asserts the widened form still flags every spelling the
+#     digits form flagged.
+.np_box_id <- "[0-9]+|[A-Z]$"
+
+.np_pobox_pat <- paste0("^(", paste(.np_box_head, collapse = "|"),
+                        ") ?#? ?(", .np_box_id, ")")
 
 .np_is_pobox <- function(street_key) {
   s <- toupper(as.character(street_key)); s[is.na(s)] <- ""
   grepl(.np_pobox_pat, s)
+}
+
+# The identifier out of a box key: the box number, or the single trailing
+# letter where that is what the box is called. Both np_normalize()'s "PO BOX
+# <id>" rewrite and .np_parse_street()'s street_num read it, so the key and the
+# parse cannot disagree about which box this is. Reading only digits here is
+# what made the lettered boxes collapse: "PO BOX A" and "PO BOX B" rewrote to
+# the same bare "PO BOX", so two different boxes in one ZIP became one address.
+.np_box_identifier <- function(street_key) {
+  s <- toupper(as.character(street_key)); s[is.na(s)] <- ""
+  num <- stringr::str_extract(s, "[0-9]+")
+  ltr <- stringr::str_match(
+    s, paste0("^(?:", paste(.np_box_head, collapse = "|"), ") ?#? ?([A-Z])$"))[, 2]
+  ifelse(is.na(num), ltr, num)
 }
 
 # A box component anywhere on the street, which is a different question from
@@ -557,9 +614,9 @@ np_name_rules <- function() {
 #     11,982 rows (0.325%) that .np_is_pobox does not see, in three shapes:
 #     a street then a bare BOX (562 rows -- the reported case,
 #     "211 EMMET ST S PO BOX"), a street then BOX <number> (10,345, led by
-#     "ONE HARRISON PLZ BOX 5079"), and a lettered box (1,075, "PO BOX A"
-#     through "PO BOX Z", which .np_pobox_pat misses because it requires
-#     digits).
+#     "ONE HARRISON PLZ BOX 5079"), and a lettered box (1,075 -- 982 of them
+#     whole-key "PO BOX A" through "PO BOX Z", which .np_pobox_pat missed until
+#     0.1.5, and 93 a street then BOX <letter>, "280 SALEM ST BOX B").
 #   * Dropping the end anchor -- a bare \bBOX\b -- matches 2,099 rows this does
 #     not, and 127 of them are streets NAMED for a box: BOX SPGS RD, BOX ELDER
 #     ST, BOX RD. The anchored form catches 1 of those 405 rows
@@ -572,15 +629,18 @@ np_name_rules <- function() {
 #     false positives already visible at that volume (GRAIN BIN RD). POST
 #     OFFICE BOX never survives .np_street_types. LOCKBOX is 2 rows.
 #
-# The pattern is read against the key np_normalize() publishes, i.e. AFTER the
-# "PO BOX <n>" rewrite, which is what makes is_po_box => street_has_box hold on
-# every row (the test asserts it) and lets a consumer recompute the flag from a
-# cached street_key.
 .np_box_pat <- "\\bBOX ?#? ?(?:[0-9]+|[A-Z])?$"
 
 .np_has_box <- function(street_key) {
   s <- toupper(as.character(street_key)); s[is.na(s)] <- ""
-  grepl(.np_box_pat, s)
+  # A box the head pattern already reports carries one by definition, so the
+  # implication is_po_box => street_has_box holds on ANY key rather than only
+  # on the rewritten one np_normalize() publishes. "POBOX 12" is why it has to
+  # be said out loud: there is no word boundary before BOX, so the tail pattern
+  # alone cannot see it, and np_has_box() would answer FALSE for a caller
+  # holding the raw line. A consumer can now recompute the flag from a cached
+  # street_key in either form.
+  grepl(.np_pobox_pat, s) | grepl(.np_box_pat, s)
 }
 
 # The unit as written, normalized to "<canonical designator> <id>" ("STE 300",
@@ -662,9 +722,14 @@ np_name_rules <- function() {
 # rather than information: "STE 300", "Suite 300" and "# 300" are one office,
 # and a BMF record that writes STE against a SAM record that writes # should not
 # read as a conflict.
+# The designator a unit id drops, lifted out of .np_unit_id() for the same
+# reason as the box vocabulary: matchdb ports it into a DuckDB macro, and
+# np_pattern("unit_id") is how it gets it rather than by retyping it.
+.np_unit_id_strip <- "^(#|[A-Z]+)[ .,]*#?[ .,]*"
+
 .np_unit_id <- function(x) {
   v  <- toupper(as.character(x))
-  id <- sub("^(#|[A-Z]+)[ .,]*#?[ .,]*", "", v)
+  id <- sub(.np_unit_id_strip, "", v)
   id <- gsub("[^A-Z0-9]", "", id)
   ifelse(is.na(v) | !nzchar(id), NA_character_, id)
 }
@@ -918,7 +983,11 @@ np_token_idf <- function(name_keys, stopwords = np_stopwords(), min_token_len = 
   lead <- stringr::str_extract(sk, num)
   lead <- ifelse(is.na(lead), stringr::str_extract(sk, glue), lead)
   rest <- ifelse(is.na(lead), sk, stringr::str_squish(substring(sk, nchar(lead) + 1L)))
-  box  <- stringr::str_match(sk, "BOX\\s*#?\\s*([0-9]+)")[, 2]
+  # The same identifier the key is rewritten with, so street_num names the box
+  # the key names. The old regex required the literal word BOX, so the POB and
+  # "PO <n>" spellings -- 236 BMF rows, keyed as "PO BOX <n>" like any other --
+  # lost their box number to NA.
+  box  <- .np_box_identifier(sk)
 
   nm_ty <- t(vapply(rest, function(r) {
     if (!nzchar(r)) return(c(NA_character_, NA_character_))

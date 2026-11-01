@@ -94,21 +94,26 @@ The same frame with the normalization columns added.
     -> "D2"). Two records are compared on this, so a BMF "STE 300" and a
     source "# 300" are recognised as one office
 
--   `is_po_box` `TRUE` if the street *is* a PO box (any variant), else
-    `FALSE`. This is the gate that blanks the address key in
-    `np_addr_key()`: a box number is the address, so counting records at
-    one counts the box's owners rather than a building's tenants
+-   `is_po_box` `TRUE` if the street *is* a PO box, else `FALSE`. Any
+    spelling of the designator (`PO BOX 12`, `P O BOX 12`, `POBOX 12`,
+    `POB 12`, `PO B 12`, `PO 12`, `BOX 12`) and any identifier – digits,
+    or a single letter where the key ends, so the lettered boxes
+    `PO BOX A` through `PO BOX Z` count as boxes too. This is the gate
+    that blanks the address key in `np_addr_key()`: a box number is the
+    address, so counting records at one counts the box's owners rather
+    than a building's tenants
 
 -   `street_has_box` `TRUE` if the street *carries* a box component,
     whether or not the whole street is one, so `is_po_box` implies
     `street_has_box`. `211 EMMET ST S PO BOX`,
-    `300 KENAN CENTER DR CAMPUS BOX` and `PO BOX A` are all `TRUE` while
-    `is_po_box` is `FALSE` on each. Filers write the street on line 1
-    and carry the box *number* alone on line 2; this is the column that
-    says a bare number from that line may be a box rather than a door.
-    It does not claim that it *is* – the street can name a suite too
-    (`4347 W NORTHWEST HWY STE 130 BOX`), and that call belongs to
-    whoever holds the second line. `street_unit` is not changed by it
+    `300 KENAN CENTER DR CAMPUS BOX` and `ONE HARRISON PLZ BOX 5079` are
+    all `TRUE` while `is_po_box` is `FALSE` on each. Filers write the
+    street on line 1 and carry the box *number* alone on line 2; this is
+    the column that says a bare number from that line may be a box
+    rather than a door. It does not claim that it *is* – the street can
+    name a suite too (`4347 W NORTHWEST HWY STE 130 BOX`), and that call
+    belongs to whoever holds the second line. `street_unit` is not
+    changed by it
 
 -   `zip5` five-digit ZIP, leading zeros restored (nested prefix)
 

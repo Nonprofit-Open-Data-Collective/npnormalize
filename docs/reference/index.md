@@ -78,7 +78,8 @@ Tokenizers, stopwords and the rule tables the keys are built from.
 <div class="section level2">
 
 -   `np_tokenize()` `np_doc_freq()` `np_addr_key()` `np_extract_unit()`
-    `np_unit_id()` `np_state_abb()` : Internals npmatch and matchdb call
+    `np_unit_id()` `np_state_abb()` `np_is_po_box()` `np_has_box()`
+    `np_pattern()` : Internals npmatch and matchdb call
 -   `np_stopwords()` : Blocking stopwords
 -   `np_name_rules()` : Name-normalization rule tables
 

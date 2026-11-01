@@ -17,7 +17,9 @@ test_that("npnormalize and npmatch agree: keys, statistics, and only #7 moved", 
   a <- np_normalize_signature(detail = TRUE)$components
   b <- npmatch::np_normalize_signature(detail = TRUE)$components
   expect_identical(setdiff(names(a), names(b)),
-                   c(".np_box_pat", ".np_has_box", ".np_pick_unit", ".np_unit_rank"))
+                   c(".np_box_head", ".np_box_id", ".np_box_identifier",
+                     ".np_box_pat", ".np_has_box", ".np_pick_unit",
+                     ".np_unit_id_strip", ".np_unit_rank"))
   expect_identical(setdiff(names(b), names(a)), character(0))
   common <- intersect(names(a), names(b))
   expect_identical(common[a[common] != b[common]],

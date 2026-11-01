@@ -118,8 +118,9 @@ test_that("street_has_box asks whether the street CARRIES a box, not whether it 
                "PO BOX A", "PO BOX 1367", "22009 BOX ELDER RD", "500 MAIN ST"))
   o <- np_normalize(d)
   expect_equal(o$street_has_box, c(rep(TRUE, 6), FALSE, FALSE))
-  # and the first five are NOT boxes: the street key is kept, so they still block
-  expect_equal(o$is_po_box, c(rep(FALSE, 5), TRUE, FALSE, FALSE))
+  # and the first four are NOT boxes: the street key is kept, so they still
+  # block. "PO BOX A" is one, as of 0.1.5 -- a lettered box is a box (#12).
+  expect_equal(o$is_po_box, c(rep(FALSE, 4), TRUE, TRUE, FALSE, FALSE))
   expect_equal(o$street_key[1], "211 EMMET ST S PO BOX")
   expect_true(nzchar(np_addr_key(o$street_key[1], o$zip5[1])))
 })
@@ -157,6 +158,59 @@ test_that("is_po_box implies street_has_box, and a BOX-named street implies neit
   d3 <- np_test_frame(.ein = c("1", "2", "3", "4"), name = "ACME", state = "GA",
                       street = c("PO DRAWER 220", "1535 W JEFFERSON ST BIN 42", NA, ""))
   expect_false(any(np_normalize(d3)$street_has_box))
+})
+
+test_that("a lettered box is a box, and the widening keeps what the digits form caught", {
+  # #12. "PO BOX A" through "PO BOX Z" is 1,010 BMF rows in 41 keys, and every
+  # one is a post office box -- there is no building at PO BOX Q. The digits-
+  # only pattern left them out of is_po_box, so np_addr_key() counted their
+  # holders as a building's tenants: 105 of their 825 address keys hold two or
+  # more EINs, up to 15 at "PO BOX B 75785" (dev/audit-pobox.R).
+  lettered <- c("PO BOX A", "PO BOX Q", "PO BOX Z", "P O BOX B")
+  d <- np_test_frame(.ein = sprintf("%02d", seq_along(lettered)), name = "ACME",
+                     state = "WV", street = lettered)
+  o <- np_normalize(d)
+  expect_true(all(o$is_po_box))
+  expect_true(all(o$street_has_box))
+  # the point of the change: the address key is blanked, so a lettered box
+  # stops being counted as a shared building
+  expect_equal(np_addr_key(o$street_key, o$zip5), rep("", length(lettered)))
+
+  # The anchor sits on the LETTER branch only. A box NUMBER is routinely
+  # followed by more text -- 1,141 BMF rows carry a mail stop, 136 carry a
+  # street as well -- so anchoring the whole identifier would have dropped
+  # them. The widened pattern must still flag every shape the digits form did.
+  kept <- c("PO BOX 5371 MSC RC 507", "PO BOX 102175 KOOSER RD", "BOX 870136",
+            "PO 1609", "POB 25161", "PO B 445", "POBOX 76", "PO BOX 1367")
+  expect_true(all(np_is_po_box(kept)))
+
+  # Two letters is the next word of a street name or label, not an identifier.
+  not <- c("PO BOX AB", "POST OFC", "22009 BOX ELDER RD", "BOXWOOD LN")
+  expect_false(any(np_is_po_box(not)))
+})
+
+test_that("np_is_po_box(), np_has_box() and np_pattern() are how a consumer asks", {
+  # pfmatch kept its own unanchored BOX regex for exactly the np_has_box()
+  # question, and an unanchored BOX claims 127 BMF rows whose street is merely
+  # NAMED for a box. These accessors exist so no consumer has to keep one: they
+  # take the raw line, key it, and answer.
+  expect_identical(np_is_po_box(c("P.O. Box 1367", "114 High St")), c(TRUE, FALSE))
+  expect_identical(np_has_box(c("211 Emmet Street South PO Box", "114 High St")),
+                   c(TRUE, FALSE))
+  # np_has_box() must not depend on np_normalize()'s "PO BOX <n>" rewrite:
+  # "POBOX 12" carries no word boundary before BOX, so the tail pattern alone
+  # cannot see it and only the head pattern can.
+  expect_true(np_has_box("POBOX 12"))
+  expect_true(all(np_has_box(c("PO BOX 12", "PO BOX A", "PO 12"))))
+  expect_identical(np_is_po_box(NA_character_), FALSE)
+
+  # The literals, for a consumer that cannot call an R function at all --
+  # matchdb's DuckDB macros. Read from here rather than retyped.
+  expect_identical(np_pattern("pobox"), npnormalize:::.np_pobox_pat)
+  expect_identical(np_pattern("box"), npnormalize:::.np_box_pat)
+  expect_identical(np_pattern("unit_id"), npnormalize:::.np_unit_id_strip)
+  expect_identical(np_pattern(), npnormalize:::.np_pobox_pat)
+  expect_error(np_pattern("nope"))
 })
 
 test_that("the street parse treats only an ANCHORED box as a box", {

@@ -107,29 +107,30 @@ distinguishable from a change to the normalizer itself.
 ``` r
 sig <- np_normalize_signature()
 sig
-#> [1] "v1-1179714ce1e9d31f"
+#> [1] "v1-533f186c123357cf"
 
 # which components make it up
 names(np_normalize_signature(detail = TRUE)$components)
 #>  [1] ".np_abbrev"             ".np_addr_class"         ".np_addr_key"          
-#>  [4] ".np_basic_clean"        ".np_box_pat"            ".np_canon_form"        
-#>  [7] ".np_clean_name"         ".np_core_stop"          ".np_directions"        
-#> [10] ".np_doc_freq"           ".np_extract_direction"  ".np_extract_form"      
-#> [13] ".np_extract_generation" ".np_extract_numbers"    ".np_extract_ordinals"  
-#> [16] ".np_extract_unit"       ".np_gen_rank"           ".np_generation"        
-#> [19] ".np_has_box"            ".np_is_placeholder"     ".np_is_pobox"          
-#> [22] ".np_legal_suffixes"     ".np_map_special"        ".np_name_core"         
-#> [25] ".np_norm_unit"          ".np_ordinals"           ".np_parse_street"      
-#> [28] ".np_parse_zip"          ".np_pick_unit"          ".np_placeholder_re"    
-#> [31] ".np_placeholder_tok"    ".np_pobox_pat"          ".np_replace_tokens"    
-#> [34] ".np_special_letters"    ".np_state_abbr"         ".np_state_codes"       
-#> [37] ".np_street_key"         ".np_street_type_set"    ".np_street_types"      
-#> [40] ".np_strip_joiners"      ".np_strip_lead_the"     ".np_strip_suffix"      
-#> [43] ".np_to_state_abb"       ".np_tokenize"           ".np_tokens"            
-#> [46] ".np_unit_designators"   ".np_unit_id"            ".np_unit_pat"          
-#> [49] ".np_unit_rank"          "np_addr_freq"           "np_name_core"          
-#> [52] "np_name_freq"           "np_name_placeholder"    "np_normalize"          
-#> [55] "np_stopwords"           "np_token_idf"          
+#>  [4] ".np_basic_clean"        ".np_box_identifier"     ".np_box_pat"           
+#>  [7] ".np_canon_form"         ".np_clean_name"         ".np_core_stop"         
+#> [10] ".np_directions"         ".np_doc_freq"           ".np_extract_direction" 
+#> [13] ".np_extract_form"       ".np_extract_generation" ".np_extract_numbers"   
+#> [16] ".np_extract_ordinals"   ".np_extract_unit"       ".np_gen_rank"          
+#> [19] ".np_generation"         ".np_has_box"            ".np_is_placeholder"    
+#> [22] ".np_is_pobox"           ".np_legal_suffixes"     ".np_map_special"       
+#> [25] ".np_name_core"          ".np_norm_unit"          ".np_ordinals"          
+#> [28] ".np_parse_street"       ".np_parse_zip"          ".np_pick_unit"         
+#> [31] ".np_placeholder_re"     ".np_placeholder_tok"    ".np_pobox_pat"         
+#> [34] ".np_replace_tokens"     ".np_special_letters"    ".np_state_abbr"        
+#> [37] ".np_state_codes"        ".np_street_key"         ".np_street_type_set"   
+#> [40] ".np_street_types"       ".np_strip_joiners"      ".np_strip_lead_the"    
+#> [43] ".np_strip_suffix"       ".np_to_state_abb"       ".np_tokenize"          
+#> [46] ".np_tokens"             ".np_unit_designators"   ".np_unit_id"           
+#> [49] ".np_unit_id_strip"      ".np_unit_pat"           ".np_unit_rank"         
+#> [52] "np_addr_freq"           "np_name_core"           "np_name_freq"          
+#> [55] "np_name_placeholder"    "np_normalize"           "np_stopwords"          
+#> [58] "np_token_idf"          
 ```
 
 </div>

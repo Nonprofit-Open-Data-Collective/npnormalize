@@ -1,3 +1,111 @@
+# npnormalize 0.1.5
+
+An audit of PO-box detection against the 3,687,435-row unified BMF, the one
+defect it found that is this package's to fix, and the first half of a fix for
+the four packages drifting apart on box patterns. The audit is
+`dev/audit-pobox.R`, kept as the record; it reads the **raw** street line
+rather than the key, because a spelling can only be judged against what the
+filer actually wrote.
+
+## What detection looks like today
+
+Nothing is being vacuumed up. `is_po_box` is 579,602 rows (15.718%) in 78,936
+distinct keys, and of the 1,000 sampled detections (weighted by row), **none**
+lacks a box word on the raw line. Across the whole corpus only 30 rows do, and
+every one is a box written without a space — `PO762`, `PO25762`. By spelling:
+
+| what matched | rows |
+|---|---:|
+| `PO BOX` / `P O BOX` / `POBOX` | 578,684 |
+| a bare `BOX` | 682 |
+| `PO` / `P O`, no box word | 164 |
+| `POB` / `PO B` | 72 |
+
+The precision edge that does exist is the dual address line: 1,141 rows carry
+text after the box number, 136 of them a whole street (`PO BOX 102175 KOOSER
+RD`), and blanking the address key discards that street. Left as is — it is
+0.031% of detections and the alternative is parsing two addresses out of one
+line.
+
+## `is_po_box` now reads a lettered box
+
+[#12](https://github.com/Nonprofit-Open-Data-Collective/npnormalize/issues/12).
+A box identifier is digits **or a single letter where the key ends**, so
+`PO BOX A` through `PO BOX Z` are boxes:
+
+* 1,010 rows (0.027%) in 41 keys, 982 of them the `PO BOX <letter>` alphabet,
+  led by B (119) and A (116). The other 28 are box lines truncated in the
+  filing — `PO BO`, `POB`, `BOX R`. No street in the corpus has a whole key of
+  a designator plus one letter.
+* There is no building at `PO BOX Q`, but the digits-only pattern meant
+  `np_addr_key()` kept their keys and counted their holders as a building's
+  tenants: **105 of their 825 address keys hold two or more EINs**, up to 15 at
+  `PO BOX B 75785`.
+* The anchor sits on the letter branch only. A box *number* is routinely
+  followed by more text, so anchoring the whole identifier would have dropped
+  the 1,141 rows above; a test asserts the widened pattern still flags every
+  spelling the digits form flagged, and the pattern added 41 keys and lost 0
+  over the full corpus.
+
+**The letter has to survive the rewrite**, and a new helper
+`.np_box_identifier()` is what makes it: `np_normalize()`'s `"PO BOX <id>"`
+rewrite read `[0-9]+`, so a widened flag alone would have rewritten `PO BOX A`
+and `PO BOX B` to the same bare `PO BOX` — two different boxes collapsed onto
+one address, worse than not flagging them. `.np_parse_street()` reads the same
+helper, so the key and `street_num` always name the same box. That also
+recovers 236 rows whose box number was `NA`: the old parse required the literal
+word `BOX`, so `POB 25161` and `PO 1609` lost theirs although the key says
+`PO BOX 25161`.
+
+## One vocabulary, and a way for other packages to read it
+
+The four packages had drifted. pfmatch kept `.PF_BOX_RE`, an *unanchored* `BOX`
+that claims 127 BMF rows whose street is merely *named* for a box (`BOX ELDER
+ST`, `BOX SPGS RD`); matchdb keeps `.md_pobox_pat`, a hand-typed copy of this
+package's pattern, because DuckDB's R client registers data frames, not scalar
+UDFs, so a SQL macro cannot call `np_addr_key()`.
+
+* `.np_box_head` and `.np_box_id` are the vocabulary; `.np_pobox_pat` is
+  composed from them, and `.np_unit_id_strip` is lifted out of `np_unit_id()`
+  for the same reason. Only the composed values are in the signature registry —
+  editing a piece still moves the signature, rearranging the pieces does not.
+* **`np_is_po_box()`** and **`np_has_box()`** answer the two box questions for a
+  caller holding one free-text line, which is what a consumer keeping its own
+  `BOX` regex actually wanted. `np_has_box()` no longer depends on the rewrite,
+  so `POBOX 12` answers `TRUE` (there is no word boundary before `BOX`, so the
+  tail pattern alone cannot see it).
+* **`np_pattern()`** hands out the literals — `"pobox"`, `"box"`, `"unit_id"` —
+  for a consumer that cannot call an R function at all. The patterns are
+  written in the subset R's own engine and RE2 share, with no lookaround (which
+  R rejects too, without `perl = TRUE`) and no `\d`.
+* `test-portability.R` runs each published pattern through **both** engines over
+  one fixture and asserts they agree, and asserts the composition. That is what
+  keeps a SQL copy honest rather than merely hand-ported.
+
+## Downstream
+
+* **This moves the signature**, to `v1-533f186c123357cf`: `is_po_box`,
+  `street_key`, `street_num` and the address key all move on the rows above, so
+  matchdb must rebuild its derived columns. It should take `.md_pobox_pat` from
+  `np_pattern("pobox")` in the same change, or its `md_place_key()` macro will
+  be narrower than `np_addr_key()`.
+* **pfmatch** can now replace `.PF_BOX_RE` with `npnormalize::np_has_box()`.
+* **npmatch** needs no change: it reads `is_po_box` only for `geo_pobox`.
+
+## Measured and not changed
+
+* The bare designator — a key that is `PO BOX` and nothing else, 460 rows — is
+  still not a box, and `np_addr_key()` still keys it. #12 suspected this
+  collapsed a ZIP's boxes onto one address; it does not. Those 460 rows hold
+  455 address keys, 4 of which have two or more EINs, at most 3.
+* The designator families `is_po_box` does **not** see are left for their own
+  issue, with the measurement in `dev/audit-pobox.R` section C: rural routes
+  carrying a box (`RR 1 BOX 8`, 4,625 rows), military `PSC` / `APO` / `FPO`
+  (343), `GENERAL DELIVERY` (164), `DRAWER` (77), and the long tail of `PO BX`,
+  `BX`, `PB`, `POSTAL`, `APARTADO` and `BUZON` (a dozen rows each or fewer).
+  `PMB` (13,700 rows) is deliberately not among them: a private mailbox sits at
+  a real street address, which the key keeps.
+
 # npnormalize 0.1.4
 
 A new address column asked for in

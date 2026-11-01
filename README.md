@@ -57,6 +57,13 @@ when present.
 `np_name_core()` and `np_name_placeholder()` work on bare name strings, and
 `np_extract_unit()` reads the secondary unit out of one free-text address line
 (`"123 Main St Ste 300"` -> `"STE 300"`, `NA` where there is none).
+`np_is_po_box()` and `np_has_box()` answer the two box questions on one line —
+*is this street a box* and *does it carry a box component* — so a consumer
+deciding whether a bare second-line number is a box number never needs its own
+`BOX` regex. For a consumer that cannot call an R function at all (matchdb's
+DuckDB macros), `np_pattern()` hands out the pattern literals themselves; they
+are written in the subset R's engine and RE2 share, and a test runs them
+through both.
 
 **Statistics over the keys:**
 * `np_name_freq()` counts how many records share each name key.
@@ -68,7 +75,7 @@ when present.
 
 ```r
 np_normalize_signature()
-#> [1] "v1-1179714ce1e9d31f"
+#> [1] "v1-533f186c123357cf"
 ```
 
 The signature is a hash of the rule tables and functions behind the keys and
