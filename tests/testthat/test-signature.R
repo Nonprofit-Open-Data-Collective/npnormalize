@@ -56,6 +56,45 @@ test_that("the signature is the pinned value", {
   expect_identical(np_normalize_signature(), "v1-5e901add4a04a5d6")
 })
 
+test_that("the signature history dates the installed signature (#20)", {
+  # The pin above is prose beside a literal; this is the machine-readable half,
+  # and the reason it exists is that consumers stamp provenance headers from
+  # packageVersion(), which dates the CURRENT signature and is no help for a
+  # historical one. matchdb and pfmatch each dated v1-59c6e84c5f38e9f5 by hand
+  # from NEWS, which is an inference in a header that should carry a record.
+  #
+  # This assertion is the drift guard: the table must name the signature the
+  # installed package actually computes, with the installed version. Add a
+  # release without adding its row and this fails.
+  h <- np_signature_history(np_normalize_signature())
+  expect_equal(nrow(h), 1L)
+  expect_identical(h$package, "npnormalize")
+  # `version` is the release that INTRODUCED the signature, so it is at or
+  # behind the installed one -- a release that changes no rule reports its
+  # predecessor's value, as 0.1.1 and 0.1.9 both do. compareVersion, not `<=`:
+  # "0.1.10" sorts before "0.1.8" as a string, which would fail a correct
+  # install on the first double-digit patch.
+  expect_true(utils::compareVersion(
+    as.character(utils::packageVersion("npnormalize")), h$version) >= 0)
+
+  full <- np_signature_history()
+  expect_false(any(duplicated(full$signature)))
+  expect_true(all(grepl("^v1-[0-9a-f]{16}$", full$signature)))
+  # every npnormalize row carries a version; the npmatch ones carry none,
+  # because it was never recorded -- undated, not guessed
+  np <- full[full$package == "npnormalize", ]
+  expect_false(any(is.na(np$version)))
+  expect_true(all(is.na(full$version[full$package == "npmatch"])))
+
+  # a pre-split value is LISTED, so a caller can tell "not an npnormalize
+  # signature" from "a signature I do not have a row for"
+  pre <- np_signature_history("v1-421e1e2a6afb024e")
+  expect_equal(nrow(pre), 1L)
+  expect_identical(pre$package, "npmatch")
+  expect_true(is.na(pre$version))
+  expect_equal(nrow(np_signature_history("v1-0000000000000000")), 0L)
+})
+
 test_that("the signature is stable within a session and across calls", {
   expect_identical(np_normalize_signature(), np_normalize_signature())
   expect_match(np_normalize_signature(), "^v1-[0-9a-f]{16}$")

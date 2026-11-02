@@ -115,6 +115,20 @@ np_normalize_signature()
 #> [1] "v1-5e901add4a04a5d6"
 ```
 
+A signature is opaque on purpose, which makes it a poor label — it says *that*
+two artifacts disagree, never which is newer. `np_signature_history()` dates
+every value the package has published, so a script can stamp the release beside
+the signature in a provenance header instead of a person looking it up here:
+
+```r
+np_signature_history("v1-59c6e84c5f38e9f5")$version
+#> [1] "0.1.7"
+```
+
+It also lists the three values npmatch published before the normalizer moved
+into this package, with an `NA` version, so an unrecognized signature (no rows)
+can be told from a recognized pre-split one.
+
 The signature is a hash of the rule tables and functions behind the keys and
 statistics, so it changes when their behaviour changes.
 * **What it ignores:** comments and formatting.

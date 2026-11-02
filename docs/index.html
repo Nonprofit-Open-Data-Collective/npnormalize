@@ -25,7 +25,7 @@
 
     <a class="navbar-brand me-2" href="index.html">npnormalize</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.8</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.9</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -110,6 +110,11 @@
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/np_normalize_signature.html">np_normalize_signature</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] "v1-5e901add4a04a5d6"</span></span></code></pre></div>
+<p>A signature is opaque on purpose, which makes it a poor label — it says <em>that</em> two artifacts disagree, never which is newer. <code><a href="reference/np_signature_history.html">np_signature_history()</a></code> dates every value the package has published, so a script can stamp the release beside the signature in a provenance header instead of a person looking it up here:</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="reference/np_signature_history.html">np_signature_history</a></span><span class="op">(</span><span class="st">"v1-59c6e84c5f38e9f5"</span><span class="op">)</span><span class="op">$</span><span class="va">version</span></span>
+<span><span class="co">#&gt; [1] "0.1.7"</span></span></code></pre></div>
+<p>It also lists the three values npmatch published before the normalizer moved into this package, with an <code>NA</code> version, so an unrecognized signature (no rows) can be told from a recognized pre-split one.</p>
 <p>The signature is a hash of the rule tables and functions behind the keys and statistics, so it changes when their behaviour changes. * <strong>What it ignores:</strong> comments and formatting. * <strong>What it leaves out:</strong> the matching code in npmatch (comparison, scoring, vetoes), because nothing it computes is stored.</p>
 <p>Anything that stores keys should stamp the signature when it is built, and refuse to load under a different one. matchdb does this for its database, bundles and tranches. <code>np_normalize_signature(detail = TRUE)</code> shows which rule table or function moved.</p>
 <p>The code was moved here from npmatch unchanged, so the signature is the one npmatch reported (<code>dev/EXTRACTION.md</code>). A test pins the value. Changing the normalizer is allowed, but it is a deliberate release: update the pin and rebuild what depends on it.</p>
