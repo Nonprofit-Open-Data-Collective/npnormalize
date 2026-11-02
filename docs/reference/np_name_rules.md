@@ -33,8 +33,11 @@ A list: `abbrev` (named character, token to expansion), `core_stop`
 (tokens dropped from `name_core`), `legal_suffixes` (trailing tokens
 stripped from `name_key`), `special_letters` (named character, a
 non-decomposable Latin letter to its ASCII spelling, folded before
-de-accenting), `placeholder_re` (a Perl regex on the raw upper-cased
-name) and `placeholder_tok`.
+de-accenting), `split_words` (named character, a word broken across two
+tokens to the whole word, applied *before* `abbrev` because a port that
+applied it after would turn `FOUNDATIO N` into `FOUNDATION N`),
+`placeholder_re` (a Perl regex on the raw upper-cased name) and
+`placeholder_tok`.
 
 </div>
 

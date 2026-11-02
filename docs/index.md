@@ -91,6 +91,24 @@ administered by the same people. Weight it with `np_mail_freq()` before
 believing it — 30,097 of the BMF’s shared boxes hold exactly two EINs,
 and the most crowded holds 3,626.
 
+**A hyphen inside a house number is closed up, not spaced.**
+`70-11 150TH STREET` and `7011 150TH STREET` are one Queens door filed
+two ways, and they now reach one `street_key`. The same applies to
+Hawaii’s prefix numbers (`73-4460 QUEEN KAAHUMANU HWY`) and to a
+lettered number (`123-A`). Only a *leading* house number is joined, so a
+hyphenated box number keeps its separator; and `street_num` carries the
+whole number rather than the part before the hyphen, which is what it
+used to do.
+
+**A port of the name rules must apply `split_words` before `abbrev`.**
+`np_name_rules()` now returns both. A filing whose fixed-width line
+break fell inside FOUNDATION arrives as two tokens (`FOUND ATION`,
+`FOUNDATIO N`), which a whole-word table cannot reach, so the word is
+rejoined first. Applying `abbrev` first instead turns `FOUNDATIO N` into
+`FOUNDATION N` — a key no correctly spelled row has. `FOUND` on its own
+is deliberately *not* folded: it is an English word, and
+`LOST AND FOUND` is a thrift shop.
+
 **Statistics over the keys:** \* `np_name_freq()` counts how many
 records share each name key. \* `np_token_idf()` weights each name token
 by how rare it is. \* `np_addr_freq()` counts the records at each
@@ -107,7 +125,7 @@ building or cluster.
 
 ``` r
 np_normalize_signature()
-#> [1] "v1-d49b18cc81ab79fb"
+#> [1] "v1-59c6e84c5f38e9f5"
 ```
 
 </div>

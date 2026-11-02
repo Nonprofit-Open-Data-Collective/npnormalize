@@ -512,3 +512,59 @@ test_that("np_extract_unit() reads the unit out of one free-text line", {
 test_that("np_state_abb() maps names and codes to two letters", {
   expect_equal(np_state_abb(c("Texas", "tx", "DC", "", "Narnia")), c("TX", "TX", "DC", NA, NA))
 })
+
+test_that("a hyphen in a house number is closed up, not spaced (#16)", {
+  # The defect this fixes cost three columns at once, so all three are asserted.
+  # A hyphenated and an unhyphenated spelling of ONE door must share a key --
+  # that is the half of the problem a consumer cannot work around, because
+  # street_key is what np_addr_key() groups on.
+  d <- np_normalize(np_test_frame(
+    street = c("70-11 150TH STREET", "7011 150TH STREET",
+               "110-04 ATLANTIC AVE", "11004 ATLANTIC AVE",
+               "77-06 BROADWAY", "7706 BROADWAY"),
+    zip5 = "11367"))
+  expect_equal(d$street_key[1], d$street_key[2])
+  expect_equal(d$street_key[3], d$street_key[4])
+  expect_equal(d$street_key[5], d$street_key[6])
+  expect_equal(d$street_key[1], "7011 150TH ST")
+  # street_num carries the whole number, and street_name starts at the street
+  expect_equal(d$street_num, rep(c("7011", "11004", "7706"), each = 2))
+  expect_equal(d$street_name, rep(c("150TH", "ATLANTIC", "BROADWAY"), each = 2))
+
+  # Hawaii's prefix numbers and a lettered house number, the other two
+  # conventions #16 measured alongside Queens.
+  h <- np_normalize(np_test_frame(
+    street = c("73-4460 QUEEN KAAHUMANU HWY", "91-400 KOMOHANA", "123-A MAIN ST")))
+  expect_equal(h$street_key,
+               c("734460 QUEEN KAAHUMANU HWY", "91400 KOMOHANA", "123A MAIN ST"))
+  expect_equal(h$street_num, c("734460", "91400", "123A"))
+  expect_equal(h$street_name, c("QUEEN KAAHUMANU", "KOMOHANA", "MAIN"))
+
+  # A Chicago-style range fuses, which is no better a house number than the
+  # "5830" it used to truncate to -- but no worse, and its street_name is now
+  # right. Asserted so the behaviour is a decision rather than a surprise.
+  r <- np_normalize(np_test_frame(street = "5830-5832 W LAWRENCE AVE"))
+  expect_equal(r$street_key, "58305832 W LAWRENCE AVE")
+  expect_equal(r$street_name, "W LAWRENCE")
+})
+
+test_that("the house-number join is anchored and narrow (#16)", {
+  # A hyphen that is NOT in a leading house number keeps its space. The box
+  # vocabulary is the case that matters: a lettered or hyphenated box number is
+  # read by .np_box_identifier, and gluing it would move is_po_box's key.
+  d <- np_normalize(np_test_frame(
+    street = c("HC 81 BOX 363-5", "PO BOX 363-5", "RR 1 BOX 8", "123-MAIN ST")))
+  expect_equal(d$street_key,
+               c("HC 81 BOX 363 5", "PO BOX 363", "RR 1 BOX 8", "123 MAIN ST"))
+  expect_equal(d$is_po_box, c(FALSE, TRUE, FALSE, FALSE))
+  # "123-MAIN ST" above is the narrowness check: the part after the hyphen must
+  # be digits or a single letter, or a street name would be glued to its number.
+
+  # The cases .np_parse_street's own comment names stay as they were: an ordinal
+  # street, a northern-Illinois grid number, and a unit that the "#" strip owns.
+  k <- np_normalize(np_test_frame(
+    street = c("16TH ST", "16W540 BLUFF RD", "123 MAIN ST # 300")))
+  expect_equal(k$street_key, c("16TH ST", "16W540 BLUFF RD", "123 MAIN ST"))
+  expect_equal(k$street_num, c(NA, "16W540", "123"))
+  expect_equal(k$street_unit[3], "# 300")
+})

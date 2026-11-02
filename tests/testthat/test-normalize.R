@@ -133,7 +133,7 @@ test_that("tabs and newlines separate tokens rather than joining words", {
 test_that("np_name_rules() exposes the tables the normalizer uses", {
   r <- np_name_rules()
   expect_named(r, c("abbrev", "core_stop", "legal_suffixes", "special_letters",
-                    "placeholder_re", "placeholder_tok"))
+                    "split_words", "placeholder_re", "placeholder_tok"))
   expect_equal(r$special_letters[["ß"]], "SS")
   expect_equal(r$special_letters[["Þ"]], "TH")
   expect_equal(r$abbrev[["FDN"]], "FOUNDATION")
@@ -161,4 +161,70 @@ test_that("a missing street or name is empty, never the text NA", {
 test_that("a street literally named NA is still a street", {
   r <- np_normalize(np_test_frame(.ein = "EIN-10-0000001", name = "A CLUB", street = "12 NA ST"))
   expect_identical(r$street_key, "12 NA ST")
+})
+
+test_that("every measured spelling of FOUNDATION folds to it (#17)", {
+  # 0.1.6 folded FDN/FND/FNDTN/FDTN. These are the rest of what the unified BMF
+  # holds -- 1,505 rows, 1,182 EINs -- and they must reach the same name_key as
+  # the correct spelling, which is the whole point: a misspelled suffix kept
+  # those rows out of the block their own siblings sit in.
+  spellings <- c("FOUNDATION", "FDN", "FND", "FNDTN", "FDTN",
+                 "FOUNDATIO", "FOUNDATI", "FOUNDATON", "FOUNDATN", "FOUNDTN",
+                 "FOUNDATOIN", "FOUNDAITON", "FOUNDATIION", "FOUDATION",
+                 "FOUNATION",
+                 # the word broken across two tokens by a fixed-width line
+                 # break, which a whole-word table cannot reach
+                 "FOUND ATION", "FOUNDATIO N", "FOUNDATI ON")
+  d <- np_normalize(np_test_frame(name = paste("SMITH FAMILY", spellings)))
+  expect_equal(d$name_full, rep("SMITH FAMILY FOUNDATION", length(spellings)))
+  expect_equal(d$name_key, rep("SMITH FAMILY", length(spellings)))
+  # name_form reports the legal form, so a misspelling must not read as none
+  expect_equal(d$name_form, rep("FOUNDATION", length(spellings)))
+  # the dba and division keys take the same normalization, which is why the
+  # four call sites now go through .np_clean_name() instead of inlining it
+  v <- np_normalize(np_test_frame(name = "ACME", dba = "SMITH FAMILY FOUDATION",
+                                  division = "SMITH FAMILY FOUND ATION"))
+  expect_equal(v$dba_key, "SMITH FAMILY")
+  expect_equal(v$division_key, "SMITH FAMILY")
+  # and the exported single-string entry points agree with the frame
+  expect_equal(np_name_core("Smith Family Foundatio"), "SMITH FAMILY FOUNDATION")
+})
+
+test_that("FOUND is left alone, because it is a word (#17)", {
+  # The measurement that decided this: of the 197 BMF rows whose name ends in
+  # FOUND, the ones that would gain a blocking partner are mostly not
+  # truncations. Folding them would mis-block a thrift shop, a ministry and a
+  # theatre for the sake of about ten genuine cases, so FOUND stays out of
+  # .np_abbrev the way PHYS does -- and this test is the record of that choice,
+  # not an endorsement of the output.
+  d <- np_normalize(np_test_frame(
+    name = c("LOST AND FOUND", "PRO FOUND", "BE FOUND VIRTUOUS MINISTRIES",
+             "ANGEL FOUND FOR ANIMALS", "SMITH FAMILY FOUND")))
+  expect_equal(d$name_full,
+               c("LOST AND FOUND", "PRO FOUND", "BE FOUND VIRTUOUS MINISTRIES",
+                 "ANGEL FOUND FOR ANIMALS", "SMITH FAMILY FOUND"))
+  expect_true(all(is.na(d$name_form)))
+  expect_false("FOUND" %in% names(np_name_rules()$abbrev))
+
+  # The rejoin is whole-word on both sides, so neither a word that merely ends
+  # in FOUND nor one that merely begins with ATION is touched.
+  w <- np_normalize(np_test_frame(
+    name = c("FOUNDATIONAL TRUTH", "PROFOUND ATION TEST", "NEW FOUNDLAND CLUB")))
+  expect_equal(w$name_full,
+               c("FOUNDATIONAL TRUTH", "PROFOUND ATION TEST", "NEW FOUNDLAND CLUB"))
+})
+
+test_that("the split-word table is applied before the abbreviation table (#17)", {
+  # Order is load-bearing and silent if wrong: run .np_abbrev first and
+  # "FOUNDATIO N" becomes "FOUNDATION N", a key no correctly spelled row has.
+  # np_name_rules() publishes both tables for a port, so the ordering is
+  # asserted on the published values rather than only on the pipeline.
+  r <- np_name_rules()
+  expect_equal(r$split_words[["FOUNDATIO N"]], "FOUNDATION")
+  expect_true(all(names(r$split_words) %in%
+                    c("FOUND ATION", "FOUNDATIO N", "FOUNDATI ON")))
+  # the head of each split entry is itself an .np_abbrev key, which is exactly
+  # why rejoining has to happen first
+  expect_true(all(c("FOUNDATIO", "FOUNDATI") %in% names(r$abbrev)))
+  expect_equal(np_name_core("Smith Family Foundatio N"), "SMITH FAMILY FOUNDATION")
 })

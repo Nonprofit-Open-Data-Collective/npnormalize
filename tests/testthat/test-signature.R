@@ -37,7 +37,17 @@ test_that("the signature is the pinned value", {
   #                      the mail_key column; and .np_box_identifier reads the
   #                      digits after the designator rather than anywhere in
   #                      the key, which is what keeps "P B0X 102" off "PO BOX 0".
-  expect_identical(np_normalize_signature(), "v1-d49b18cc81ab79fb")
+  # v1-59c6e84c5f38e9f5  0.1.7 -- a hyphen in a leading house number is closed
+  #                      up rather than spaced (.np_hyphen_house,
+  #                      .np_join_house_number, #16), so the two filed
+  #                      spellings of one Queens or Hawaii address share a
+  #                      street_key and street_num stops truncating; and
+  #                      .np_abbrev takes eleven further spellings of
+  #                      FOUNDATION, three of them a word a line break split
+  #                      (.np_split_words, .np_fold_split, #17), which moves
+  #                      name_full, name_key, name_form, dba_key and
+  #                      division_key.
+  expect_identical(np_normalize_signature(), "v1-59c6e84c5f38e9f5")
 })
 
 test_that("the signature is stable within a session and across calls", {
