@@ -85,6 +85,15 @@ now reach one `street_key`. The same applies to Hawaii's prefix numbers
 separator; and `street_num` carries the whole number rather than the part
 before the hyphen, which is what it used to do.
 
+A lone compass letter is not part of the number: `1002-E SENECA ST` is 1002
+East Seneca, so it keys as `1002 E SENECA ST` and meets the spelling filed with
+a space. Where the same address is filed both hyphenated and spaced the two
+still key apart — `27-41 HORSENECK RD` against `27 41 HORSENECK RD` — because a
+space-separated run cannot be told from a house number followed by a numeric
+street name. Joining those as well was measured and rejected: it closes 1,156
+of matchdb's 1,490 address splits and fuses `5001 11 MILE RD` into
+`500111 MILE RD`, `712 H STREET NE` into `712H ST NE`, and 92,795 more.
+
 **A port of the name rules must apply `split_words` before `abbrev`.**
 `np_name_rules()` now returns both. A filing whose fixed-width line break fell
 inside FOUNDATION arrives as two tokens (`FOUND ATION`, `FOUNDATIO N`), which a
@@ -103,7 +112,7 @@ English word, and `LOST AND FOUND` is a thrift shop.
 
 ```r
 np_normalize_signature()
-#> [1] "v1-59c6e84c5f38e9f5"
+#> [1] "v1-5e901add4a04a5d6"
 ```
 
 The signature is a hash of the rule tables and functions behind the keys and

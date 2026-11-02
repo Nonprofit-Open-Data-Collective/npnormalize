@@ -915,7 +915,29 @@ np_name_rules <- function() {
 # gsub(" ", "", street_key) adds 2,278 merges over the same reference of which
 # 972 (42.67%) join rows whose street_num disagrees -- "4780 1 55 N" with
 # "47801 55 N" -- and only 410 are this case.
-.np_hyphen_house <- "^ *[0-9]+(?: *- *(?:[0-9]+[A-Z]?|[A-Z]))+(?= |$)"
+#
+# JOINING THE SPACED SPELLING TOO was measured and rejected for the same
+# reason, narrowly as well as bluntly. Allowing a space where this pattern
+# wants a hyphen closes 1,156 of matchdb's 1,490 EIN-level address splits and
+# moves 92,797 further strings, which are street names: "5001 11 MILE RD" to
+# "500111 MILE RD" (11 Mile Road), "712 H STREET NE" to "712H ST NE" (H Street
+# NE), "17398 M 86" to "17398M86" (M-86), "964 60 RD" to "96460 RD". Nothing in
+# the string tells "27 41 HORSENECK RD", house 27-41, from "120 66 ST", house
+# 120 on 66 St -- so the hyphen is the only evidence there is, and the splits
+# that remain are the price of not guessing.
+#
+# A LONE COMPASS LETTER IS NOT PART OF THE NUMBER. "1002-E SENECA ST" is 1002
+# East Seneca, and 0.1.7 joined it to "1002E SENECA ST": a house number that
+# does not exist, on a key that no longer met the "1002 E SENECA ST" spelling
+# filed for the same door. So N, S, E and W are excluded where they stand alone
+# -- and only there: "123-A MAIN ST" is a lettered house number and still
+# joins, because A is not a compass point. Measured over the 22,026,817-row
+# address table: 459 strings
+# move, closing 39 of the join's 1,496 EIN-level address splits. The cost is a
+# unit letter that happens to be a compass point ("123-E" meaning unit E),
+# which is spaced instead -- what 0.1.6 did to every lettered house number.
+.np_hyphen_house <-
+  "^ *[0-9]+(?: *- *(?:[0-9]+[A-Z]?|(?![NSEW](?: |$))[A-Z]))+(?= |$)"
 
 .np_join_house_number <- function(x) {
   m  <- stringr::str_extract(x, .np_hyphen_house)

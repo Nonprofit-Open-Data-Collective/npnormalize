@@ -1,3 +1,83 @@
+# npnormalize 0.1.8
+
+One correction to 0.1.7, found by measuring what 0.1.7's house-number join did
+to matchdb's 22,026,817-row address table before adopting it there. The join
+is a clear gain — isolated from the other three releases in the same signature
+move, it merges 7,583 EIN-level address groups — but it was closing up a hyphen
+in one place it should not.
+
+## A lone compass letter is a direction, not part of the house number (#16)
+
+In `70-11 150TH STREET` the hyphen is structural, and closing it up is the
+whole point of #16. In `1002-E SENECA ST` the hyphen is a typed-over space in
+front of a direction, and closing it up invented a house number:
+
+| street | 0.1.7 `street_key` | 0.1.8 `street_key` |
+|---|---|---|
+| `1002 - E SENECA STREET` | `1002E SENECA ST` | `1002 E SENECA ST` |
+| `1002 E SENECA ST` | `1002 E SENECA ST` | `1002 E SENECA ST` |
+| `1013- N 5TH ST` | `1013N 5TH ST` | `1013 N 5TH ST` |
+| `10-S 462 CARRINGTON CIRCLE` | `10S 462 CARRINGTON CIR` | `10 S 462 CARRINGTON CIR` |
+
+`1002E` is not a door, and the key no longer met the spelling of the same door
+filed with a space — the split #16 set out to close, reintroduced one row over.
+
+`.np_hyphen_house` now excludes `N`, `S`, `E` and `W` where they stand alone,
+and only there: `123-A MAIN ST` is a lettered house number and still joins,
+because `A` is not a compass point. A spelled-out direction was never a single
+letter to the join, so `123-EAST MAIN ST` was already left alone. The cost is a
+unit letter that happens to be a compass point (`123-E` meaning unit E), which
+is spaced instead — which is what 0.1.6 did to every lettered house number.
+
+Measured over matchdb's address table: 459 strings move, closing 39 of the
+join's 1,496 EIN-level address splits.
+
+## The splits the join still leaves, and why
+
+The same measurement found what #16's adoption note could not: the join merges
+7,583 address groups and splits 1,496, and every one of those 1,496 is a single
+address filed two ways, with 0 of them two different streets.
+
+| the three spellings of one Queens door | 0.1.3 key | 0.1.8 key |
+|---|---|---|
+| `100-09 METROPOLITAN AVENUE` | `100 09 METROPOLITAN AVE` | `10009 METROPOLITAN AVE` |
+| `100 09 METROPOLITAN AVE` | `100 09 METROPOLITAN AVE` | `100 09 METROPOLITAN AVE` |
+| `10009 METROPOLITAN AVE` | `10009 METROPOLITAN AVE` | `10009 METROPOLITAN AVE` |
+
+0.1.3 grouped the first two and 0.1.8 groups the last two; no rule groups all
+three, because a space-separated run cannot be told from a house number
+followed by a numeric street name. `27 41 HORSENECK RD` is house 27-41; `120 66
+ST` is house 120 on 66 St; nothing in either string says which. The same holds
+for a letter: `101 B FOREST DR` is house 101B, and `101 B ST` is house 101 on B
+Street.
+
+Joining the spaced spelling as well was measured over the same table, under the
+same compass-letter exclusion. It looks good in the aggregate and is wrong in
+the particular: measured over one set of strings it closes 1,156 of the splits
+and adds 2,650 merges, but it moves 92,797 further strings, and the strings it
+moves are street names.
+
+| street | with the spaced join | what the street is |
+|---|---|---|
+| `5001 11 MILE RD` | `500111 MILE RD` | 11 Mile Road, Michigan |
+| `712 H STREET NE` | `712H ST NE` | H Street NE, Washington DC |
+| `17398 M 86` | `17398M86` | M-86, a Michigan state highway |
+| `964 60 RD` | `96460 RD` | 60 Road, a Colorado grid road |
+| `1801 C ST` | `1801C ST` | C Street |
+| `15039 4H CENTER LN` | `150394H CENTER LN` | 4-H Center Lane |
+
+17,614 of those 92,797 are a house number followed by a bare numeric or
+single-letter street name, which is the shape the rule cannot tell from a
+hyphenated house number; the rest include the cases above. So the merges it
+adds are not all real, which is the same verdict an earlier measurement reached
+for the blunter version of the idea — keying on `gsub(" ", "", street_key)`
+added 2,278 merges of which 972 (42.67%) joined rows whose `street_num`
+disagreed.
+
+The 1,457 splits that remain are therefore deliberate: 0.0066% of the address
+table, against 7,566 merges, and the alternative is worse. A consumer that
+would rather have the merges can key on the house number itself — `street_num`
+is now the whole number on both spellings.
 # npnormalize 0.1.7
 
 Two spelling problems, one on each side of the frame, both of them a case where
