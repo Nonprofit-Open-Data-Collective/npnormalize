@@ -86,6 +86,17 @@ a recognized pre-split one; their npmatch version was never recorded, so
 <code>version</code> is <code>NA</code> and <code>summary</code> says where the value is cited.</p>
     </div>
     <div class="section level2">
+    <h2 id="a-signature-does-not-determine-a-release">A signature does not determine a release<a class="anchor" aria-label="anchor" href="#a-signature-does-not-determine-a-release"></a></h2>
+    <p>A release that changes no rule reports its predecessor's value: 0.1.0 and
+0.1.1 both report <code>v1-3e7b9f9d59bbb19e</code>. So this answers <em>which release
+produced this value</em> — meaning the earliest that could have — and not <em>which
+release is installed</em>. A stamped artifact wants <strong>both</strong>: the signature, so a
+reader can tell whether its keys are comparable with theirs, and
+<code><a href="https://rdrr.io/r/utils/packageDescription.html" class="external-link">utils::packageVersion()</a></code> at build time, so they can tell what was running.
+Neither determines the other, and a header carrying only one of them invites
+the reader to infer the other.</p>
+    </div>
+    <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
     <div class="dont-index"><p><code><a href="np_normalize_signature.html">np_normalize_signature()</a></code></p></div>
     </div>

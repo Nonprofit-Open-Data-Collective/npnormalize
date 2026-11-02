@@ -65,6 +65,21 @@ cited.
 
 <div class="section level2">
 
+## A signature does not determine a release
+
+A release that changes no rule reports its predecessor's value: 0.1.0
+and 0.1.1 both report `v1-3e7b9f9d59bbb19e`. So this answers *which
+release produced this value* — meaning the earliest that could have —
+and not *which release is installed*. A stamped artifact wants **both**:
+the signature, so a reader can tell whether its keys are comparable with
+theirs, and `utils::packageVersion()` at build time, so they can tell
+what was running. Neither determines the other, and a header carrying
+only one of them invites the reader to infer the other.
+
+</div>
+
+<div class="section level2">
+
 ## See also
 
 <div class="dont-index">

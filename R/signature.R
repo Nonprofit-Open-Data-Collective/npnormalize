@@ -166,6 +166,17 @@
 #' a recognized pre-split one; their npmatch version was never recorded, so
 #' `version` is `NA` and `summary` says where the value is cited.
 #'
+#' # A signature does not determine a release
+#'
+#' A release that changes no rule reports its predecessor's value: 0.1.0 and
+#' 0.1.1 both report `v1-3e7b9f9d59bbb19e`. So this answers *which release
+#' produced this value* — meaning the earliest that could have — and not *which
+#' release is installed*. A stamped artifact wants **both**: the signature, so a
+#' reader can tell whether its keys are comparable with theirs, and
+#' [utils::packageVersion()] at build time, so they can tell what was running.
+#' Neither determines the other, and a header carrying only one of them invites
+#' the reader to infer the other.
+#'
 #' @param signature Optionally one or more signature strings to look up. A
 #'   value that is not listed returns no rows — it is not an error, and it is
 #'   not the same as a listed row with an `NA` version.

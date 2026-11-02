@@ -31,6 +31,17 @@ this package. They are listed so that an unrecognized value can be told from
 a recognized pre-split one; their npmatch version was never recorded, so
 \code{version} is \code{NA} and \code{summary} says where the value is cited.
 }
+\section{A signature does not determine a release}{
+A release that changes no rule reports its predecessor's value: 0.1.0 and
+0.1.1 both report \verb{v1-3e7b9f9d59bbb19e}. So this answers \emph{which release
+produced this value} — meaning the earliest that could have — and not \emph{which
+release is installed}. A stamped artifact wants \strong{both}: the signature, so a
+reader can tell whether its keys are comparable with theirs, and
+\code{\link[utils:packageDescription]{utils::packageVersion()}} at build time, so they can tell what was running.
+Neither determines the other, and a header carrying only one of them invites
+the reader to infer the other.
+}
+
 \examples{
 np_signature_history(np_normalize_signature())
 
