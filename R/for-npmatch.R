@@ -1,6 +1,6 @@
 #' Internals npmatch and matchdb call
 #'
-#' Thin, exported wrappers around six internal helpers. npmatch's blocking,
+#' Thin, exported wrappers around this package's internal helpers. npmatch's blocking,
 #' comparison and geography code, and matchdb's place keys, call these instead
 #' of reaching into this package's internals. Most users never call them.
 #'
@@ -8,7 +8,15 @@
 #'   [npmatch::np_ref_index()] and [npmatch::np_block()] do.
 #' * `np_doc_freq()` counts, for each token, the rows it appears in.
 #' * `np_addr_key()` builds the address key [np_addr_freq()] counts on: the
-#'   street key and ZIP, blank for a PO box.
+#'   street key and ZIP, blank for any mail-delivery address — a box, general
+#'   delivery, or military mail. The key answers "same building?", so leaving
+#'   one in does not add a wrong row, it builds a cluster of every box-holder
+#'   in the ZIP.
+#' * `np_mail_key()` builds its complement: the box and ZIP, blank for
+#'   everything else, including the mail-only designators that have no
+#'   identifier. A shared box is evidence of shared administration rather than
+#'   of a shared building — gate it on [np_mail_freq()], because one BMF box
+#'   holds 3,626 EINs.
 #' * `np_extract_unit()` reads the secondary unit out of one free-text address
 #'   line, exactly as [np_normalize()] fills `street_unit`: `"STE 300"`,
 #'   `"FL 2"`, `"# 12"`, or `NA` where the line names no unit. This is the
@@ -29,15 +37,18 @@
 #'   `np_extract_unit()`'s `unit` argument, where a bare value is accepted
 #'   because the column itself says what it is.
 #' * `np_state_abb()` maps a state name or code to its two-letter code.
-#' * `np_is_po_box()` and `np_has_box()` answer the two box questions for a
-#'   caller holding one free-text line rather than a frame: *is this street a
-#'   box* (the `is_po_box` column, the gate that blanks `np_addr_key()`), and
-#'   *does it carry a box component* (the `street_has_box` column, which is
-#'   also TRUE where a street ends in the box word and the number is carried on
-#'   line 2). They exist so that a consumer deciding whether a bare identifier
-#'   is a box number calls this package instead of keeping its own `BOX` regex:
-#'   pfmatch's did not anchor, and an unanchored `BOX` claims 127 BMF rows
-#'   whose street is merely *named* for a box (`BOX ELDER ST`, `BOX SPGS RD`).
+#' * `np_is_po_box()`, `np_is_mail_only()` and `np_has_box()` answer the three
+#'   box questions for a caller holding one free-text line rather than a frame:
+#'   *is this street a box* (the `is_po_box` column), *is it a mail-delivery
+#'   address with no box number and no building* (the `is_mail_only` column —
+#'   general delivery and military mail; the two together are the gate that
+#'   blanks `np_addr_key()`), and *does it carry a box component* (the
+#'   `street_has_box` column, which is also TRUE where a street ends in the box
+#'   word and the number is carried on line 2). They exist so that a consumer
+#'   deciding whether a bare identifier is a box number calls this package
+#'   instead of keeping its own `BOX` regex: pfmatch's did not anchor, and an
+#'   unanchored `BOX` claims 127 BMF rows whose street is merely *named* for a
+#'   box (`BOX ELDER ST`, `BOX SPGS RD`).
 #' * `np_pattern()` hands out the pattern literals themselves, for a consumer
 #'   that cannot call an R function at all. matchdb is the case: DuckDB's R
 #'   client registers data frames, not scalar UDFs, so `md_place_key()` has to
@@ -67,18 +78,23 @@
 #'   `"# 12"`).
 #' @param state State names or codes.
 #' @param which For `np_pattern()`, which literal to return: `"pobox"` (the
-#'   `is_po_box` gate, anchored at the head of the key), `"box"` (the
-#'   `street_has_box` tail) or `"unit_id"` (the designator `np_unit_id()`
-#'   strips).
+#'   `is_po_box` gate, anchored at the head of the key), `"mailonly"` (the
+#'   `is_mail_only` gate, the second half of the `np_addr_key()` blank),
+#'   `"box"` (the `street_has_box` tail) or `"unit_id"` (the designator
+#'   `np_unit_id()` strips). A SQL copy of the address key needs **both**
+#'   `"pobox"` and `"mailonly"`; taking only the first leaves the macro
+#'   narrower than [np_addr_key()].
 #' @return `np_tokenize()`: a list of base and concatenated token tables.
 #'   `np_doc_freq()`: a named numeric vector of row counts per token.
 #'   `np_addr_key()`: a character vector of address keys.
+#'   `np_mail_key()`: a character vector of box keys, `""` where the record
+#'   names no identified box.
 #'   `np_extract_unit()`: a character vector of canonical units, `NA` where the
 #'   address names none. `np_unit_id()`: a
 #'   character vector of suite identifiers, `NA` where there is none.
 #'   `np_state_abb()`: a character vector of two-letter codes, `NA` where none
-#'   applies. `np_is_po_box()` and `np_has_box()`: logical vectors, one value
-#'   per input line. `np_pattern()`: one regex string.
+#'   applies. `np_is_po_box()`, `np_is_mail_only()` and `np_has_box()`: logical
+#'   vectors, one value per input line. `np_pattern()`: one regex string.
 #' @keywords internal
 #' @export
 np_tokenize <- function(frame, token_col, stopwords, min_token_len, concat_adjacent) {
@@ -92,6 +108,10 @@ np_doc_freq <- function(row, token) .np_doc_freq(row, token)
 #' @rdname np_tokenize
 #' @export
 np_addr_key <- function(street_keys, zip5 = NULL) .np_addr_key(street_keys, zip5)
+
+#' @rdname np_tokenize
+#' @export
+np_mail_key <- function(street_keys, zip5 = NULL) .np_mail_key(street_keys, zip5)
 
 #' @rdname np_tokenize
 #' @export
@@ -111,13 +131,18 @@ np_is_po_box <- function(street) .np_is_pobox(.np_street_key(street))
 
 #' @rdname np_tokenize
 #' @export
+np_is_mail_only <- function(street) .np_is_mailonly(.np_street_key(street))
+
+#' @rdname np_tokenize
+#' @export
 np_has_box <- function(street) .np_has_box(.np_street_key(street))
 
 #' @rdname np_tokenize
 #' @export
-np_pattern <- function(which = c("pobox", "box", "unit_id")) {
+np_pattern <- function(which = c("pobox", "mailonly", "box", "unit_id")) {
   switch(match.arg(which),
-         pobox   = .np_pobox_pat,
-         box     = .np_box_pat,
-         unit_id = .np_unit_id_strip)
+         pobox    = .np_pobox_pat,
+         mailonly = .np_mailonly_pat,
+         box      = .np_box_pat,
+         unit_id  = .np_unit_id_strip)
 }

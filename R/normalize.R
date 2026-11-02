@@ -241,13 +241,31 @@
 #' * `street_unit_id` the identifier alone, separators dropped ("STE D-2" ->
 #'   "D2"). Two records are compared on this, so a BMF "STE 300" and a source
 #'   "# 300" are recognised as one office
-#' * `is_po_box`    `TRUE` if the street *is* a PO box, else `FALSE`. Any
-#'   spelling of the designator (`PO BOX 12`, `P O BOX 12`, `POBOX 12`,
-#'   `POB 12`, `PO B 12`, `PO 12`, `BOX 12`) and any identifier -- digits, or a
-#'   single letter where the key ends, so the lettered boxes `PO BOX A` through
-#'   `PO BOX Z` count as boxes too. This is the gate that blanks the address
-#'   key in [np_addr_key()]: a box number is the address, so counting records
-#'   at one counts the box's owners rather than a building's tenants
+#' * `is_po_box`    `TRUE` if the street *is* a mail receptacle with an
+#'   identifier, else `FALSE`. Any spelling of the designator (`PO BOX 12`,
+#'   `P O BOX 12`, `POBOX 12`, `POB 12`, `PO B 12`, `PO 12`, `BOX 12`,
+#'   `PO BX 12`, `PB 12`, `PB BOX 12`, `P B0X 12`, `POSTAL OFC BOX 12`,
+#'   `APDO 12`, `DRAWER B`, `PO DRAWER D`, `POSTAL DRAWER 12`) and any
+#'   identifier -- digits, or a single letter where the key ends, so the
+#'   lettered boxes `PO BOX A` through `PO BOX Z` count as boxes too. One of
+#'   the two gates that blank the address key in [np_addr_key()]
+#' * `is_mail_only` `TRUE` if the street names a mail-delivery point that has no
+#'   building behind it *and* no identifier this package will reduce to a box:
+#'   `GENERAL DELIVERY`, `GEN DEL`, military mail (`PSC 303 BOX 24`,
+#'   `CMR 467 BOX 7000`, `APO`, `FPO`, `DPO`) and a university mail drawer
+#'   named by two letters (`DRAWER JJ EMORY UNIVERSITY`). The other gate on
+#'   [np_addr_key()], and disjoint from `is_po_box` by construction, so the two
+#'   flags partition the buildingless addresses. Unlike a box the key is *not*
+#'   rewritten, because there is no box number to rewrite it to. A rural route
+#'   is deliberately not here: it is a unique delivery point, so `RR 1 BOX 8`
+#'   keeps its key, and measured that is safe -- the most crowded
+#'   route-with-box address in the BMF holds 5 EINs
+#' * `mail_key`     the box plus its ZIP (`"PO BOX 1234 59801"`), or `""` where
+#'   the record names no identified box. The complement of the address key:
+#'   blanking a box says two filers are not in one building, which is true and
+#'   is all it says, while two filers collecting mail from the *same* box are
+#'   likely administered by the same people. Weight it by [np_mail_freq()]
+#'   before believing it -- one BMF box holds 3,626 EINs. See [np_mail_key()]
 #' * `street_has_box` `TRUE` if the street *carries* a box component, whether or
 #'   not the whole street is one, so `is_po_box` implies `street_has_box`.
 #'   `211 EMMET ST S PO BOX`, `300 KENAN CENTER DR CAMPUS BOX` and
@@ -308,9 +326,13 @@ np_normalize <- function(data) {
   sk  <- .np_street_key(data$street)
   pob <- .np_is_pobox(sk)
   box <- .np_box_identifier(sk)              # a number, or a lettered box's letter
+  # Read before the rewrite: a mail-only key is NOT rewritten, so the string
+  # the designator was found in is the string that survives.
+  mol <- .np_is_mailonly(sk)
   sk[pob] <- ifelse(!is.na(box[pob]), paste("PO BOX", box[pob]), "PO BOX")
   data$street_key <- sk
   data$is_po_box  <- pob
+  data$is_mail_only <- mol
   # Read from the rewritten key, so is_po_box implies street_has_box.
   data$street_has_box <- .np_has_box(sk)
   sp <- .np_parse_street(sk)
@@ -322,6 +344,10 @@ np_normalize <- function(data) {
   data$zip5 <- zp$zip5
   data$zip3 <- zp$zip3
   data$zip9 <- zp$zip9
+
+  # After the ZIP parse, because the box's ZIP is half the key. Built from the
+  # rewritten street_key, which .np_mail_key() is idempotent on.
+  data$mail_key <- .np_mail_key(sk, zp$zip5)
 
   data$state_abb <- .np_to_state_abb(data$state)
 
@@ -547,10 +573,36 @@ np_name_rules <- function() {
 # over one fixture and asserts they agree, which is what keeps a SQL copy
 # honest rather than merely hand-ported.
 #
-# Head designators on an already-cleaned street key, longest prefix first:
-# "PO BOX 12", "P O BOX 12", "POBOX 12", "POB 12", "PO B 12", "PO 12",
-# "P O 12", "BOX 12".
-.np_box_head <- c("P ?O ?BOX", "P ?O ?B", "BOX", "P ?O")
+# Head designators on an already-cleaned street key. A box is a receptacle with
+# an IDENTIFIER, which is what separates this list from .np_mail_head below.
+# Measured spellings, with their BMF row counts where the family is small:
+#   "PO BOX 12" / "P O BOX 12" / "POBOX 12"   578,684 rows
+#   "BOX 12"                                      682
+#   "PO 12" / "P O 12"                            164
+#   "POB 12" / "PO B 12"                           72
+#   "PO BX 24514"                                   2   (#13, 0.1.6)
+#   "PB 150", "PB BOX 6128"                        12   (#13, 0.1.6)
+#   "P B0X 102" -- a zero for the O                 4   (#13, 0.1.6)
+#   "POSTAL OFC BOX 54"                             1   (#13, 0.1.6)
+#   "APDO 1391"                                     1   (#13, 0.1.6)
+#   "DRAWER B", "PO DRAWER D", "POSTAL DRAWER 1549" 53 anchored (#13, 0.1.6)
+#
+# The drawer prefix group is NON-capturing, and has to stay that way: group 2 of
+# .np_pobox_pat is the identifier and matchdb reads it by index in a SQL macro,
+# so a capturing group inside the head would silently shift it.
+#
+# A DRAWER is also in .np_mail_head, which is not redundant: the two lists
+# answer different questions. 29 of the 49 anchored drawer keys carry a plain
+# identifier and land here ("DRAWER B", "DRAWER 0"); the rest are university
+# mail drawers with a two-letter identifier and a name after it ("DRAWER AA
+# UNIVERSITY OF MONTEVALLO", "DRAWER JJ EMORY UNIVERSITY"), which no identifier
+# pattern should be widened to swallow -- two letters is the next word of a
+# street name. Those still have no building, so .np_mail_head blanks them.
+.np_box_head <- c("P ?O ?BOX", "P ?O ?BX", "P ?O ?B", "P ?O",
+                  "PB BOX", "P ?B[0O]?X", "PB",
+                  "POSTAL OFC BOX", "APDO",
+                  "(?:P ?O |POST ?OFC |POSTAL )?DRAWER",
+                  "BOX")
 
 # A box identifier is digits, or a single letter where the key ENDS. Measured
 # over 3,687,435 BMF address strings (dev/audit-pobox.R):
@@ -587,6 +639,51 @@ np_name_rules <- function() {
   grepl(.np_pobox_pat, s)
 }
 
+# Designators that mean "mail is delivered here, nobody works here", with NO
+# identifier required. That is the whole difference from .np_box_head: a box
+# number can be canonicalized and compared, and these either cannot or must not
+# be. The address key blanks on this for the same reason it blanks on a box --
+# np_addr_key() answers "same building?", and none of these is a building --
+# but the key is NOT rewritten to "PO BOX <id>", because there is no box number
+# to put there and throwing the string away would lose the only thing it says.
+#
+# Measured over 3,687,435 BMF rows (dev/audit-pobox.R section C): 532 rows, 496
+# of them invisible to .np_is_pobox.
+#
+#   * GENERAL DELIVERY 158 rows (117 that exact string, 41 "GEN DEL"). The
+#     clearest case in the corpus: the street is the entire address, so every
+#     general-delivery filer in a ZIP was being counted as one building's
+#     tenants.
+#   * military mail 318 rows -- PSC 236, CMR 63, APO 12, FPO 7, DPO 0. Each is
+#     an overseas fleet or community mail room, and 290 of them do carry a
+#     specific box ("PSC 303 BOX 24"), but the box number is unique only within
+#     its PSC, so it is not a np_mail_key() identifier and is deliberately not
+#     parsed as one. DPO is in the list at 0 rows because it is the third of the
+#     three USPS military designators and a filing will eventually use it.
+#   * the drawers with no plain identifier, 20 rows (see .np_box_head).
+#
+# Why a \b and no identifier: "GEN DEL" cannot run into a street name, since \b
+# needs a boundary and "GEN DELANEY ST" has none after DEL. Anchored at ^, none
+# of these reaches a street: 0 of the 3,998 rural-route keys, 0 BIN, 0 of the
+# BOX ELDER / BOX SPGS family. The one row it takes from a KEEP family is
+# "APO MAILBOX 637 REED UN BLDG", which is an APO address.
+.np_mail_head <- c("GENERAL DELIVERY", "GEN DEL", "APO", "FPO", "DPO",
+                   "PSC", "CMR", "(?:P ?O |POST ?OFC |POSTAL )?DRAWER")
+
+.np_mailonly_pat <- paste0("^(", paste(.np_mail_head, collapse = "|"), ")\\b")
+
+# Reported DISJOINT from is_po_box, so the two flags partition the addresses
+# that have no building rather than overlapping on the drawers. A DRAWER sits in
+# both vocabularies by design (see .np_box_head), and a caller should not have to
+# know that: "DRAWER B" has a comparable identifier and is a box, "DRAWER JJ
+# EMORY UNIVERSITY" does not and is mail-only. The address-key blank is the
+# UNION either way, which is why np_pattern("mailonly") hands out the raw
+# pattern -- a SQL copy ORs the two and lands in the same place.
+.np_is_mailonly <- function(street_key) {
+  s <- toupper(as.character(street_key)); s[is.na(s)] <- ""
+  grepl(.np_mailonly_pat, s) & !grepl(.np_pobox_pat, s)
+}
+
 # The identifier out of a box key: the box number, or the single trailing
 # letter where that is what the box is called. Both np_normalize()'s "PO BOX
 # <id>" rewrite and .np_parse_street()'s street_num read it, so the key and the
@@ -595,9 +692,16 @@ np_name_rules <- function() {
 # the same bare "PO BOX", so two different boxes in one ZIP became one address.
 .np_box_identifier <- function(street_key) {
   s <- toupper(as.character(street_key)); s[is.na(s)] <- ""
-  num <- stringr::str_extract(s, "[0-9]+")
-  ltr <- stringr::str_match(
-    s, paste0("^(?:", paste(.np_box_head, collapse = "|"), ") ?#? ?([A-Z])$"))[, 2]
+  head_re <- paste0("^(?:", paste(.np_box_head, collapse = "|"), ") ?#? ?")
+  # The digits are read from what follows the DESIGNATOR, not from the whole
+  # key. Reading the whole key was correct only while no designator contained a
+  # digit: "P B0X 102" -- a filer's zero for the O, 4 BMF rows -- took the 0 out
+  # of B0X and keyed every one of them to "PO BOX 0", which is the lettered-box
+  # collapse of #12 all over again. The digits still need to be found ANYWHERE
+  # after the head, because a box number is routinely followed by more text
+  # ("PO BOX 102175 KOOSER RD", "PO BOX 5371 MSC RC 507").
+  num <- stringr::str_extract(sub(head_re, "", s), "[0-9]+")
+  ltr <- stringr::str_match(s, paste0(head_re, "([A-Z])$"))[, 2]
   ifelse(is.na(num), ltr, num)
 }
 
@@ -763,6 +867,41 @@ np_name_freq <- function(name_keys) {
   stats::setNames(as.integer(tab), names(tab))
 }
 
+#' Mail-key frequency table for a reference corpus
+#'
+#' Counts how many reference records share each exact `mail_key` (box + ZIP).
+#' This is what makes a shared box *interpretable* rather than merely true, and
+#' it is not an optional refinement — measured over the 3,687,435-row unified
+#' BMF, the key separates two populations that want opposite treatment:
+#'
+#' * **A box shared by two or three filers** is the signal worth having: an
+#'   organization and its foundation, a parent and its chapter, a small group of
+#'   charities run out of one accountant's office. 30,097 of the 36,910 shared
+#'   boxes hold exactly two EINs and 3,829 hold three.
+#' * **A box shared by hundreds** is a service bureau and is evidence of
+#'   nothing. 678 boxes hold ten or more EINs, and the most crowded —
+#'   `PO BOX 653067` in ZIP 75265 — holds **3,626**. Treating that as
+#'   common administration would link 3,626 unrelated organizations to each
+#'   other.
+#'
+#' So read `mail_key` as evidence only below a threshold, the same way
+#' [np_addr_freq()]'s `share_min` gates an address. Overall: 496,830 distinct
+#' mail keys, 7.43% of them shared, and 20.79% of box-holding EINs on a shared
+#' box.
+#'
+#' @param mail_keys Character vector of mail keys (reference `mail_key`), as
+#'   built by [np_mail_key()]. Empty strings are dropped, so records that name
+#'   no box do not all pile onto one entry.
+#' @return A named integer vector mapping `mail_key` -> record count.
+#' @seealso [np_mail_key()], [np_addr_freq()]
+#' @export
+np_mail_freq <- function(mail_keys) {
+  v <- toupper(as.character(mail_keys))
+  v <- v[!is.na(v) & nzchar(v)]
+  tab <- table(v)
+  stats::setNames(as.integer(tab), names(tab))
+}
+
 #' Address-sharing statistics for a reference corpus
 #'
 #' Counts how many reference records sit at each exact address, at each address
@@ -889,14 +1028,58 @@ np_addr_freq <- function(street_keys, zip5 = NULL, unit_ids = NULL,
 }
 
 # The address a suite is read against: street + ZIP, so "123 MAIN ST" in two
-# towns is two addresses. PO boxes are excluded -- a box number IS the address,
-# so counting records at one counts the box's owners, not a building's tenants.
+# towns is two addresses.
+#
+# A mail-delivery address is excluded, because this key answers "same building?"
+# and none of them is a building. Leaving one in does not merely add a wrong
+# row, it builds a cluster: every box-holder in a ZIP becomes a co-tenant of
+# every other, and the address-sharing statistics then read that crowd as an
+# office building. Two gates, for the two shapes of the same problem:
+# .np_pobox_pat (a receptacle with an identifier) and .np_mailonly_pat (a
+# delivery point with none). Together they blank 581,166 of 3,687,435 BMF rows.
+#
+# What is NOT excluded, deliberately, is a rural route: unlike a box it is a
+# unique delivery point, so two filers at "RR 1 BOX 8" in one ZIP really are at
+# one place. Measured, that is also safe -- across 4,606 route-with-box address
+# keys the most crowded holds 5 EINs, and across 570 bare-route keys, 2. See
+# np_mail_key() for the signal a blanked box still carries.
 .np_addr_key <- function(street_keys, zip5 = NULL) {
   s <- toupper(as.character(street_keys)); s[is.na(s)] <- ""
   z <- if (is.null(zip5)) rep("", length(s)) else as.character(zip5)
   z[is.na(z)] <- ""
   out <- ifelse(nzchar(s), paste(s, z), "")
-  out[grepl(.np_pobox_pat, s)] <- ""
+  out[grepl(.np_pobox_pat, s) | grepl(.np_mailonly_pat, s)] <- ""
+  out
+}
+
+# The complement of .np_addr_key(): the box itself, plus ZIP. Blanking a box out
+# of the address key says "these two are not in one building", which is true,
+# and then says nothing further -- but two organizations collecting mail from
+# the SAME box are very likely administered by the same people, which is a
+# different claim and a useful one. This key is what carries it.
+#
+# Only an identified box is keyed. The mail-only designators get "" on purpose:
+# "GENERAL DELIVERY 59801" would re-create exactly the false crowd the blank in
+# .np_addr_key() just removed, one ZIP's worth of unrelated filers reading as
+# one mailbox.
+#
+# It is idempotent on a rewritten key, which matters because matchdb caches
+# street_key and may hand back either form: "POB 25161" and "PO BOX 25161" both
+# key to "PO BOX 25161 <zip>".
+#
+# Measured over the BMF: 580,670 box rows in 496,830 mail keys, 7.43% of which
+# are shared by two or more EINs, and 20.79% of box-holding EINs sit on one.
+# The count is not optional -- see np_mail_freq(), and the 3,626-EIN box.
+.np_mail_key <- function(street_keys, zip5 = NULL) {
+  s <- toupper(as.character(street_keys)); s[is.na(s)] <- ""
+  z <- if (is.null(zip5)) rep("", length(s)) else as.character(zip5)
+  z[is.na(z)] <- ""
+  out <- character(length(s))
+  if (!length(s)) return(out)              # ifelse() here returned logical(0)
+  z   <- rep_len(z, length(s))             # recycled explicitly, because the
+  id  <- .np_box_identifier(s)             # box rows are then indexed, not
+  box <- .np_is_pobox(s) & !is.na(id)      # pasted whole
+  out[box] <- paste("PO BOX", id[box], z[box])
   out
 }
 

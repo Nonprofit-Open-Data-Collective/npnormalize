@@ -94,14 +94,36 @@ The same frame with the normalization columns added.
     -> "D2"). Two records are compared on this, so a BMF "STE 300" and a
     source "# 300" are recognised as one office
 
--   `is_po_box` `TRUE` if the street *is* a PO box, else `FALSE`. Any
-    spelling of the designator (`PO BOX 12`, `P O BOX 12`, `POBOX 12`,
-    `POB 12`, `PO B 12`, `PO 12`, `BOX 12`) and any identifier – digits,
-    or a single letter where the key ends, so the lettered boxes
-    `PO BOX A` through `PO BOX Z` count as boxes too. This is the gate
-    that blanks the address key in `np_addr_key()`: a box number is the
-    address, so counting records at one counts the box's owners rather
-    than a building's tenants
+-   `is_po_box` `TRUE` if the street *is* a mail receptacle with an
+    identifier, else `FALSE`. Any spelling of the designator
+    (`PO BOX 12`, `P O BOX 12`, `POBOX 12`, `POB 12`, `PO B 12`,
+    `PO 12`, `BOX 12`, `PO BX 12`, `PB 12`, `PB BOX 12`, `P B0X 12`,
+    `POSTAL OFC BOX 12`, `APDO 12`, `DRAWER B`, `PO DRAWER D`,
+    `POSTAL DRAWER 12`) and any identifier – digits, or a single letter
+    where the key ends, so the lettered boxes `PO BOX A` through
+    `PO BOX Z` count as boxes too. One of the two gates that blank the
+    address key in `np_addr_key()`
+
+-   `is_mail_only` `TRUE` if the street names a mail-delivery point that
+    has no building behind it *and* no identifier this package will
+    reduce to a box: `GENERAL DELIVERY`, `GEN DEL`, military mail
+    (`PSC 303 BOX 24`, `CMR 467 BOX 7000`, `APO`, `FPO`, `DPO`) and a
+    university mail drawer named by two letters
+    (`DRAWER JJ EMORY UNIVERSITY`). The other gate on `np_addr_key()`,
+    and disjoint from `is_po_box` by construction, so the two flags
+    partition the buildingless addresses. Unlike a box the key is *not*
+    rewritten, because there is no box number to rewrite it to. A rural
+    route is deliberately not here: it is a unique delivery point, so
+    `RR 1 BOX 8` keeps its key, and measured that is safe – the most
+    crowded route-with-box address in the BMF holds 5 EINs
+
+-   `mail_key` the box plus its ZIP (`"PO BOX 1234 59801"`), or `""`
+    where the record names no identified box. The complement of the
+    address key: blanking a box says two filers are not in one building,
+    which is true and is all it says, while two filers collecting mail
+    from the *same* box are likely administered by the same people.
+    Weight it by `np_mail_freq()` before believing it – one BMF box
+    holds 3,626 EINs. See `np_mail_key()`
 
 -   `street_has_box` `TRUE` if the street *carries* a box component,
     whether or not the whole street is one, so `is_po_box` implies

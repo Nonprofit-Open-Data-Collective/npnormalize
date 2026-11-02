@@ -13,13 +13,16 @@ test_that("npnormalize and npmatch agree: keys, statistics, and only #7 moved", 
   # the designator table and the pattern built from it, and every other
   # component hash is still identical. 0.1.3 added two components (the unit
   # pick) and changed two more (#7's sequel, matchdb#29); 0.1.4 added the box
-  # pattern and its predicate (#9) and changed .np_parse_street again with them.
+  # pattern and its predicate (#9) and changed .np_parse_street again with them;
+  # 0.1.6 added the mail-only gate and the mail key (#13).
   a <- np_normalize_signature(detail = TRUE)$components
   b <- npmatch::np_normalize_signature(detail = TRUE)$components
   expect_identical(setdiff(names(a), names(b)),
                    c(".np_box_head", ".np_box_id", ".np_box_identifier",
-                     ".np_box_pat", ".np_has_box", ".np_pick_unit",
-                     ".np_unit_id_strip", ".np_unit_rank"))
+                     ".np_box_pat", ".np_has_box", ".np_is_mailonly",
+                     ".np_mail_head", ".np_mail_key", ".np_mailonly_pat",
+                     ".np_pick_unit", ".np_unit_id_strip", ".np_unit_rank",
+                     "np_mail_freq"))
   expect_identical(setdiff(names(b), names(a)), character(0))
   common <- intersect(names(a), names(b))
   expect_identical(common[a[common] != b[common]],

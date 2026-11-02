@@ -31,6 +31,15 @@
 #      not a box: a private mailbox sits at a real street address, which the
 #      key keeps. "any BOX, undetected" is 14,015 rows, which is what
 #      street_has_box reports.
+#   Everything above is the state at 0.1.5, which is when the audit was run.
+#   0.1.6 then acted on C: the box vocabulary took PO BX, PB, PB BOX, P BOX /
+#   P B0X, POSTAL OFC BOX, APDO and the DRAWER family (+58 rows, 0 lost), and a
+#   second gate `is_mail_only` took GENERAL DELIVERY and military mail
+#   (PSC / CMR / APO / FPO / DPO, 496 rows) out of the address key. Rural
+#   routes, MAILBOX and BIN keep their key, on the measurement in section D's
+#   companion run: the most crowded route-with-box address holds 5 EINs. So
+#   re-running section C today reports fewer misses than the counts above.
+#
 #   D. the lettered box is 1,010 rows in 41 keys, 982 of them PO BOX A..Z;
 #      105 of their 825 address keys hold two or more EINs, up to 15. The bare
 #      designator ("PO BOX" and nothing else) is 460 rows in 455 address keys,

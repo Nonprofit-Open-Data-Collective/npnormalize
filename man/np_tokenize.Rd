@@ -4,10 +4,12 @@
 \alias{np_tokenize}
 \alias{np_doc_freq}
 \alias{np_addr_key}
+\alias{np_mail_key}
 \alias{np_extract_unit}
 \alias{np_unit_id}
 \alias{np_state_abb}
 \alias{np_is_po_box}
+\alias{np_is_mail_only}
 \alias{np_has_box}
 \alias{np_pattern}
 \title{Internals npmatch and matchdb call}
@@ -18,6 +20,8 @@ np_doc_freq(row, token)
 
 np_addr_key(street_keys, zip5 = NULL)
 
+np_mail_key(street_keys, zip5 = NULL)
+
 np_extract_unit(street, unit = NULL)
 
 np_unit_id(unit)
@@ -26,9 +30,11 @@ np_state_abb(state)
 
 np_is_po_box(street)
 
+np_is_mail_only(street)
+
 np_has_box(street)
 
-np_pattern(which = c("pobox", "box", "unit_id"))
+np_pattern(which = c("pobox", "mailonly", "box", "unit_id"))
 }
 \arguments{
 \item{frame}{A data frame holding \code{token_col}.}
@@ -58,23 +64,28 @@ designator to say what it is. For \code{np_unit_id()}, a suite as
 \item{state}{State names or codes.}
 
 \item{which}{For \code{np_pattern()}, which literal to return: \code{"pobox"} (the
-\code{is_po_box} gate, anchored at the head of the key), \code{"box"} (the
-\code{street_has_box} tail) or \code{"unit_id"} (the designator \code{np_unit_id()}
-strips).}
+\code{is_po_box} gate, anchored at the head of the key), \code{"mailonly"} (the
+\code{is_mail_only} gate, the second half of the \code{np_addr_key()} blank),
+\code{"box"} (the \code{street_has_box} tail) or \code{"unit_id"} (the designator
+\code{np_unit_id()} strips). A SQL copy of the address key needs \strong{both}
+\code{"pobox"} and \code{"mailonly"}; taking only the first leaves the macro
+narrower than \code{\link[=np_addr_key]{np_addr_key()}}.}
 }
 \value{
 \code{np_tokenize()}: a list of base and concatenated token tables.
 \code{np_doc_freq()}: a named numeric vector of row counts per token.
 \code{np_addr_key()}: a character vector of address keys.
+\code{np_mail_key()}: a character vector of box keys, \code{""} where the record
+names no identified box.
 \code{np_extract_unit()}: a character vector of canonical units, \code{NA} where the
 address names none. \code{np_unit_id()}: a
 character vector of suite identifiers, \code{NA} where there is none.
 \code{np_state_abb()}: a character vector of two-letter codes, \code{NA} where none
-applies. \code{np_is_po_box()} and \code{np_has_box()}: logical vectors, one value
-per input line. \code{np_pattern()}: one regex string.
+applies. \code{np_is_po_box()}, \code{np_is_mail_only()} and \code{np_has_box()}: logical
+vectors, one value per input line. \code{np_pattern()}: one regex string.
 }
 \description{
-Thin, exported wrappers around six internal helpers. npmatch's blocking,
+Thin, exported wrappers around this package's internal helpers. npmatch's blocking,
 comparison and geography code, and matchdb's place keys, call these instead
 of reaching into this package's internals. Most users never call them.
 }
@@ -84,7 +95,15 @@ of reaching into this package's internals. Most users never call them.
 \code{\link[npmatch:np_ref_index]{npmatch::np_ref_index()}} and \code{\link[npmatch:np_block]{npmatch::np_block()}} do.
 \item \code{np_doc_freq()} counts, for each token, the rows it appears in.
 \item \code{np_addr_key()} builds the address key \code{\link[=np_addr_freq]{np_addr_freq()}} counts on: the
-street key and ZIP, blank for a PO box.
+street key and ZIP, blank for any mail-delivery address — a box, general
+delivery, or military mail. The key answers "same building?", so leaving
+one in does not add a wrong row, it builds a cluster of every box-holder
+in the ZIP.
+\item \code{np_mail_key()} builds its complement: the box and ZIP, blank for
+everything else, including the mail-only designators that have no
+identifier. A shared box is evidence of shared administration rather than
+of a shared building — gate it on \code{\link[=np_mail_freq]{np_mail_freq()}}, because one BMF box
+holds 3,626 EINs.
 \item \code{np_extract_unit()} reads the secondary unit out of one free-text address
 line, exactly as \code{\link[=np_normalize]{np_normalize()}} fills \code{street_unit}: \code{"STE 300"},
 \code{"FL 2"}, \code{"# 12"}, or \code{NA} where the line names no unit. This is the
@@ -105,15 +124,18 @@ record counter as a door; pass a dedicated unit column as
 \code{np_extract_unit()}'s \code{unit} argument, where a bare value is accepted
 because the column itself says what it is.
 \item \code{np_state_abb()} maps a state name or code to its two-letter code.
-\item \code{np_is_po_box()} and \code{np_has_box()} answer the two box questions for a
-caller holding one free-text line rather than a frame: \emph{is this street a
-box} (the \code{is_po_box} column, the gate that blanks \code{np_addr_key()}), and
-\emph{does it carry a box component} (the \code{street_has_box} column, which is
-also TRUE where a street ends in the box word and the number is carried on
-line 2). They exist so that a consumer deciding whether a bare identifier
-is a box number calls this package instead of keeping its own \code{BOX} regex:
-pfmatch's did not anchor, and an unanchored \code{BOX} claims 127 BMF rows
-whose street is merely \emph{named} for a box (\verb{BOX ELDER ST}, \verb{BOX SPGS RD}).
+\item \code{np_is_po_box()}, \code{np_is_mail_only()} and \code{np_has_box()} answer the three
+box questions for a caller holding one free-text line rather than a frame:
+\emph{is this street a box} (the \code{is_po_box} column), \emph{is it a mail-delivery
+address with no box number and no building} (the \code{is_mail_only} column —
+general delivery and military mail; the two together are the gate that
+blanks \code{np_addr_key()}), and \emph{does it carry a box component} (the
+\code{street_has_box} column, which is also TRUE where a street ends in the box
+word and the number is carried on line 2). They exist so that a consumer
+deciding whether a bare identifier is a box number calls this package
+instead of keeping its own \code{BOX} regex: pfmatch's did not anchor, and an
+unanchored \code{BOX} claims 127 BMF rows whose street is merely \emph{named} for a
+box (\verb{BOX ELDER ST}, \verb{BOX SPGS RD}).
 \item \code{np_pattern()} hands out the pattern literals themselves, for a consumer
 that cannot call an R function at all. matchdb is the case: DuckDB's R
 client registers data frames, not scalar UDFs, so \code{md_place_key()} has to

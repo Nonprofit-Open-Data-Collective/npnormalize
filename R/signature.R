@@ -33,7 +33,8 @@
       ".np_legal_suffixes", ".np_abbrev", ".np_street_types",
       ".np_generation", ".np_ordinals", ".np_gen_rank", ".np_directions",
       ".np_street_type_set", ".np_state_abbr", ".np_state_codes",
-      ".np_unit_pat", ".np_pobox_pat", ".np_box_pat", ".np_unit_id_strip",
+      ".np_unit_pat", ".np_pobox_pat", ".np_mailonly_pat", ".np_box_pat",
+      ".np_unit_id_strip",
       ".np_special_letters", ".np_unit_designators", ".np_unit_rank",
       ".np_core_stop", ".np_placeholder_re", ".np_placeholder_tok"
     ),
@@ -45,16 +46,17 @@
       ".np_extract_generation", ".np_extract_numbers", ".np_extract_ordinals",
       ".np_extract_direction", ".np_extract_form", ".np_canon_form",
       ".np_strip_lead_the", ".np_strip_suffix",
-      ".np_is_pobox", ".np_has_box", ".np_box_identifier",
+      ".np_is_pobox", ".np_is_mailonly", ".np_has_box", ".np_box_identifier",
       ".np_extract_unit", ".np_pick_unit", ".np_norm_unit", ".np_unit_id",
-      ".np_street_key",
+      ".np_street_key", ".np_mail_key",
       ".np_parse_street", ".np_parse_zip", ".np_to_state_abb",
       ".np_name_core", ".np_is_placeholder", ".np_clean_name",
       "np_name_core", "np_name_placeholder"
     ),
     # --- corpus statistics shipped alongside a compiled reference -----------
     corpus = c("np_stopwords", "np_name_freq", "np_token_idf",
-               "np_addr_freq", ".np_addr_key", ".np_addr_class"),
+               "np_addr_freq", ".np_addr_key", ".np_addr_class",
+               "np_mail_freq"),
     # --- the blocking index a caller may also cache -------------------------
     index = c(".np_tokenize", ".np_doc_freq")
   )
@@ -70,11 +72,12 @@
 .np_signature_exempt <- function() {
   # the comparators that sat beside the normalizer stayed in npmatch
   c("np_name_rules",   # an accessor: returns the registered tables, derives nothing
-    # The pieces .np_pobox_pat is composed from. Registering the composed
-    # pattern already hashes their contents, and leaving them out is what lets
-    # the vocabulary be rearranged without moving the signature. Exempt, not
-    # forgotten -- the completeness test is why this list exists.
-    ".np_box_head", ".np_box_id")
+    # The pieces .np_pobox_pat and .np_mailonly_pat are composed from.
+    # Registering the composed patterns already hashes their contents, and
+    # leaving them out is what lets the vocabulary be rearranged without moving
+    # the signature. Exempt, not forgotten -- the completeness test is why this
+    # list exists.
+    ".np_box_head", ".np_box_id", ".np_mail_head")
 }
 
 .np_sig_md5 <- function(x) {

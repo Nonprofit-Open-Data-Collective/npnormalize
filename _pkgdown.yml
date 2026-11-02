@@ -29,6 +29,7 @@ reference:
       - np_name_freq
       - np_token_idf
       - np_addr_freq
+      - np_mail_freq
   - title: The signature
     desc: >
       Fingerprint the normalizer so stored keys can refuse to load under a
