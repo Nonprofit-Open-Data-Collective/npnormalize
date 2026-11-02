@@ -47,7 +47,13 @@ test_that("the signature is the pinned value", {
   #                      (.np_split_words, .np_fold_split, #17), which moves
   #                      name_full, name_key, name_form, dba_key and
   #                      division_key.
-  expect_identical(np_normalize_signature(), "v1-59c6e84c5f38e9f5")
+  # v1-5e901add4a04a5d6  0.1.8 -- .np_hyphen_house stops joining a lone
+  #                      compass letter, because "1002-E SENECA ST" is 1002
+  #                      East Seneca and 0.1.7 made it "1002E SENECA ST",
+  #                      keyed apart from the spelling with a space. 459
+  #                      strings of the 22,026,817-row address table, 39 of
+  #                      the join's 1,496 address splits.
+  expect_identical(np_normalize_signature(), "v1-5e901add4a04a5d6")
 })
 
 test_that("the signature is stable within a session and across calls", {

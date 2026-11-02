@@ -107,7 +107,7 @@ distinguishable from a change to the normalizer itself.
 ``` r
 sig <- np_normalize_signature()
 sig
-#> [1] "v1-59c6e84c5f38e9f5"
+#> [1] "v1-5e901add4a04a5d6"
 
 # which components make it up
 names(np_normalize_signature(detail = TRUE)$components)

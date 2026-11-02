@@ -568,3 +568,32 @@ test_that("the house-number join is anchored and narrow (#16)", {
   expect_equal(k$street_num, c(NA, "16W540", "123"))
   expect_equal(k$street_unit[3], "# 300")
 })
+
+test_that("a lone compass letter is a direction, not a house number (#16)", {
+  # 0.1.7 joined "1002-E SENECA ST" into "1002E SENECA ST": a house number that
+  # does not exist, keyed apart from the "1002 E SENECA ST" spelling filed for
+  # the same door. Each pair below is one address written two ways and must
+  # reach one key -- the hyphen is a typed-over space, not a Queens separator.
+  d <- np_normalize(np_test_frame(
+    street = c("1002 - E SENECA STREET", "1002 E SENECA ST",
+               "1013- N 5TH ST", "1013 N 5TH ST",
+               "10-S 462 CARRINGTON CIRCLE", "10 S 462 CARRINGTON CIR")))
+  expect_equal(d$street_key[1], d$street_key[2])
+  expect_equal(d$street_key[3], d$street_key[4])
+  expect_equal(d$street_key[5], d$street_key[6])
+  expect_equal(d$street_key[c(1, 3, 5)],
+               c("1002 E SENECA ST", "1013 N 5TH ST", "10 S 462 CARRINGTON CIR"))
+  expect_equal(d$street_num[c(1, 3, 5)], c("1002", "1013", "10"))
+  expect_equal(d$street_name[c(1, 3, 5)],
+               c("E SENECA", "N 5TH", "S 462 CARRINGTON"))
+
+  # Only a letter standing ALONE is excluded, and only a compass letter. A
+  # lettered house number still joins, a spelled-out direction is not a single
+  # letter to the join (it is abbreviated afterwards, by .np_street_types), and
+  # the Queens and Hawaii numbers are digits either way.
+  k <- np_normalize(np_test_frame(
+    street = c("123-A MAIN ST", "123-EAST MAIN ST", "70-11 150TH ST",
+               "73-4460 QUEEN KAAHUMANU HWY")))
+  expect_equal(k$street_key, c("123A MAIN ST", "123 E MAIN ST",
+                               "7011 150TH ST", "734460 QUEEN KAAHUMANU HWY"))
+})
