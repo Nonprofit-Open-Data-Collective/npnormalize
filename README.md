@@ -50,20 +50,32 @@ when present.
 * name keys: `name_key`, `name_full`, `name_core`, `dba_key`;
 * name features: `name_form`, `name_nums`, `name_ord`, `name_placeholder`;
 * street parts: `street_key`, `street_num`, `street_name`, `street_type`,
-  `street_unit`, `street_unit_id`, `is_po_box`, `street_has_box`;
+  `street_unit`, `street_unit_id`, `is_po_box`, `is_mail_only`,
+  `street_has_box`, `mail_key`;
 * ZIP parts: `zip5`, `zip3`, `zip9`;
 * `state_abb`.
 
 `np_name_core()` and `np_name_placeholder()` work on bare name strings, and
 `np_extract_unit()` reads the secondary unit out of one free-text address line
 (`"123 Main St Ste 300"` -> `"STE 300"`, `NA` where there is none).
-`np_is_po_box()` and `np_has_box()` answer the two box questions on one line —
-*is this street a box* and *does it carry a box component* — so a consumer
-deciding whether a bare second-line number is a box number never needs its own
-`BOX` regex. For a consumer that cannot call an R function at all (matchdb's
-DuckDB macros), `np_pattern()` hands out the pattern literals themselves; they
-are written in the subset R's engine and RE2 share, and a test runs them
-through both.
+`np_is_po_box()`, `np_is_mail_only()` and `np_has_box()` answer the three box
+questions on one line — *is this street a box*, *is it a delivery point with no
+box number and no building* (general delivery, military mail), and *does it
+carry a box component* — so a consumer deciding whether a bare second-line
+number is a box number never needs its own `BOX` regex. For a consumer that
+cannot call an R function at all (matchdb's DuckDB macros), `np_pattern()` hands
+out the pattern literals themselves; they are written in the subset R's engine
+and RE2 share, and a test runs them through both. A SQL copy of the address key
+needs **both** `np_pattern("pobox")` and `np_pattern("mailonly")`, since the
+blank is the union.
+
+`np_addr_key()` and `np_mail_key()` are complements. The address key answers
+"same building?", so it is blank for every mail-delivery address — leaving one
+in does not add a wrong row, it makes every box-holder in a ZIP a co-tenant of
+every other. The mail key carries what is left: two organizations collecting
+mail from the *same* box are likely administered by the same people. Weight it
+with `np_mail_freq()` before believing it — 30,097 of the BMF's shared boxes
+hold exactly two EINs, and the most crowded holds 3,626.
 
 **Statistics over the keys:**
 * `np_name_freq()` counts how many records share each name key.
@@ -75,7 +87,7 @@ through both.
 
 ```r
 np_normalize_signature()
-#> [1] "v1-533f186c123357cf"
+#> [1] "v1-d49b18cc81ab79fb"
 ```
 
 The signature is a hash of the rule tables and functions behind the keys and

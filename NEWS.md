@@ -1,3 +1,133 @@
+# npnormalize 0.1.6
+
+The policy question behind #13, answered family by family, and the signal a
+blanked box was throwing away. `np_addr_key()` answers *same building?*, so
+every mail-delivery address has to be blank in it — leaving one in does not add
+a wrong row, it builds a cluster, because every box-holder in a ZIP becomes a
+co-tenant of every other and the address-sharing statistics then read that
+crowd as an office building. Four families were measured against that rule and
+two of them keep their key.
+
+## The box vocabulary takes the spellings #13 measured
+
+`.np_box_head` gains `PO BX`, `PB` and `PB BOX`, `P BOX` and its zero-for-the-O
+typo `P B0X`, `POSTAL OFC BOX`, `APDO`, and the `DRAWER` family (bare, or
+behind `PO` / `POST OFC` / `POSTAL`). Over the 3,687,435-row unified BMF that
+is **58 more rows detected and 0 lost**, in 54 keys, every one of which is a
+box a filer spelled unusually.
+
+The identifier had to move with it. `.np_box_identifier()` read the first digit
+run in the whole key, which was correct only while no designator contained a
+digit — `P B0X 102` took the `0` out of `B0X` and keyed all four of those rows
+to `PO BOX 0`, which is the lettered-box collapse of #12 in a new place: two
+different boxes landing on one address. The digits are now read from what
+follows the designator, still anywhere after it, because a box number is
+routinely followed by more text (`PO BOX 102175 KOOSER RD`). Corpus-wide the
+identifier moved on **0** rows that 0.1.5 already called boxes.
+
+Measured and declined, so the decision is on the record rather than the
+spelling being missed: a bare `BX` (1 row), the unabbreviated `APARTADO` and
+`BUZON` (7), and `CALLER BOX` (1). `APARTADO` is the unabbreviated form of the
+`APDO` that was adopted, so it is the first candidate if this is revisited.
+
+## `is_mail_only`, a second gate on the address key
+
+A new column and a new pattern for the designators that have no building *and*
+no identifier to compare: `GENERAL DELIVERY` and `GEN DEL` (158 rows),
+military mail — `PSC` 236, `CMR` 63, `APO` 12, `FPO` 7, `DPO` 0 — and the
+university mail drawers named by two letters (`DRAWER AA UNIVERSITY OF
+MONTEVALLO`, 20 rows). 496 rows that `is_po_box` cannot see.
+
+`GENERAL DELIVERY` is the clearest case in the corpus: 117 rows whose street is
+that exact string and nothing else, so the key was `GENERAL DELIVERY <zip>` and
+every general-delivery filer in a ZIP was counted as one building's tenants.
+
+Two things it deliberately does not do. The street key is **not** rewritten —
+there is no box number to rewrite it to, and the string is the only thing the
+row says — and the flag is reported **disjoint** from `is_po_box`, so the two
+partition the buildingless addresses rather than overlapping on the drawers.
+A `DRAWER` sits in both vocabularies because `DRAWER B` has a comparable
+identifier and `DRAWER JJ EMORY UNIVERSITY` does not, and a caller should not
+have to know that. The address-key blank is the union either way, which is why
+`np_pattern("mailonly")` hands out the raw pattern: a SQL copy ORs the two and
+lands in the same place.
+
+Anchored at `^` with a word boundary and no identifier, none of these reaches a
+street: 0 of the 3,998 rural-route keys, 0 `BIN`, 0 of the `BOX ELDER` /
+`BOX SPGS` family, and `GEN DELANEY ST` is safe because `\b` cannot run into a
+street name. The one row it takes from a KEEP family is
+`APO MAILBOX 637 REED UN BLDG`, which is an APO address.
+
+## What keeps its address key, and why
+
+A **rural route** does, on the reasoning that it is unlike a box: it is a
+unique delivery point, so two filers at `RR 1 BOX 8` in one ZIP really are at
+one place. #13 worried that routes would crowd instead; measured, they do not.
+Across 4,606 route-with-box address keys the most crowded holds **5** EINs, and
+across 570 bare-route keys, **2**. The `street_num` collision #13 raised is
+real — `RR 1` parses `street_num` `1` — but with clusters that size it has
+nothing to amplify.
+
+A **MAILBOX** (123 rows) and a **BIN** (24) do too: both sit at a real street
+address, which the key keeps. `BIN` also still has a visible false positive at
+its volume, `1206 GRAIN BIN RD`.
+
+Together the two gates blank **581,166 of 3,687,435 rows**, 554 more than
+0.1.5. The address key is un-blanked on 0 rows and otherwise unchanged on 0,
+and the distinct address-key count falls by 538.
+
+## `mail_key`: what a blanked box still tells you
+
+Blanking a box says two filers are not in one building. That is true, and it is
+all it says — but two organizations collecting mail from the *same* box are
+very likely administered by the same people, which is a different claim and a
+useful one. `mail_key` is the complement of the address key and carries it:
+the box and its ZIP (`"PO BOX 1234 59801"`), blank for everything else,
+including the mail-only designators, because `GENERAL DELIVERY 59801` would
+rebuild exactly the false crowd the blank just removed.
+
+It is idempotent on a rewritten `street_key`, which matters because matchdb
+caches that column and may hand back either form: `POB 25161`, `P O 25161` and
+`PO BOX 25161` all key to `PO BOX 25161 <zip>`. Corpus-wide 213 mail keys are
+built from more than one street key and every one is the same box spelled
+differently.
+
+**The count is not optional.** 580,670 box rows fall into 496,830 mail keys,
+7.43% of them shared by two or more EINs, and 20.79% of box-holding EINs sit on
+a shared box. But the populations at either end want opposite treatment:
+30,097 of the 36,910 shared boxes hold exactly two EINs and 3,829 hold three —
+an organization and its foundation, a parent and its chapter — while 678 hold
+ten or more and the most crowded, `PO BOX 653067` in ZIP 75265, holds **3,626**.
+That is a service bureau, and reading it as common administration would link
+3,626 unrelated organizations to each other. `np_mail_freq()` is the
+counterpart to `np_addr_freq()`'s `share_min` for exactly this, and its
+documentation carries the numbers.
+
+## Published for consumers
+
+* `np_is_mail_only()` joins `np_is_po_box()` and `np_has_box()` for a caller
+  holding one free-text line.
+* `np_mail_key()` joins `np_addr_key()`; `np_mail_freq()` joins
+  `np_name_freq()` and `np_addr_freq()`.
+* `np_pattern("mailonly")` joins `"pobox"`, `"box"` and `"unit_id"`.
+  `test-portability.R` now runs all four through R's TRE and DuckDB's RE2 over
+  a 45-key fixture and asserts they agree, and it asserts two things a
+  hand-ported SQL macro gets wrong: that a macro reading only `"pobox"` is
+  narrower than `np_addr_key()`, and that the identifier is capture group 2 —
+  the drawer alternative nests a group inside the head, and it has to stay
+  non-capturing or group 2 silently becomes the drawer prefix.
+
+## Signature
+
+This moves `np_normalize_signature()` to `v1-d49b18cc81ab79fb`. `is_po_box`,
+`street_key`, `street_num` and the address key all move on the rows above, and
+`is_mail_only` and `mail_key` are new columns, so **matchdb must rebuild its
+derived columns** — and should take `.md_pobox_pat` from `np_pattern("pobox")`
+and add the `"mailonly"` gate in the same change, or its `md_place_key()` macro
+will be narrower than `np_addr_key()` in two separate ways. npmatch needs no
+change: it reads `is_po_box` only, for `geo_pobox`.
+
+R CMD check: Status OK. 216 test assertions pass.
 # npnormalize 0.1.5
 
 An audit of PO-box detection against the 3,687,435-row unified BMF, the one

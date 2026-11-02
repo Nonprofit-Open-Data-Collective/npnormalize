@@ -41,6 +41,7 @@ blocking.
 -   `np_token_idf()` : Per-token inverse document frequency for a
     reference corpus
 -   `np_addr_freq()` : Address-sharing statistics for a reference corpus
+-   `np_mail_freq()` : Mail-key frequency table for a reference corpus
 
 </div>
 
@@ -77,9 +78,10 @@ Tokenizers, stopwords and the rule tables the keys are built from.
 
 <div class="section level2">
 
--   `np_tokenize()` `np_doc_freq()` `np_addr_key()` `np_extract_unit()`
-    `np_unit_id()` `np_state_abb()` `np_is_po_box()` `np_has_box()`
-    `np_pattern()` : Internals npmatch and matchdb call
+-   `np_tokenize()` `np_doc_freq()` `np_addr_key()` `np_mail_key()`
+    `np_extract_unit()` `np_unit_id()` `np_state_abb()` `np_is_po_box()`
+    `np_is_mail_only()` `np_has_box()` `np_pattern()` : Internals
+    npmatch and matchdb call
 -   `np_stopwords()` : Blocking stopwords
 -   `np_name_rules()` : Name-normalization rule tables
 

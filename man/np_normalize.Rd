@@ -47,13 +47,31 @@ or from the \code{unit} column when the street line names none
 \item \code{street_unit_id} the identifier alone, separators dropped ("STE D-2" ->
 "D2"). Two records are compared on this, so a BMF "STE 300" and a source
 "# 300" are recognised as one office
-\item \code{is_po_box}    \code{TRUE} if the street \emph{is} a PO box, else \code{FALSE}. Any
-spelling of the designator (\verb{PO BOX 12}, \verb{P O BOX 12}, \verb{POBOX 12},
-\verb{POB 12}, \verb{PO B 12}, \verb{PO 12}, \verb{BOX 12}) and any identifier -- digits, or a
-single letter where the key ends, so the lettered boxes \verb{PO BOX A} through
-\verb{PO BOX Z} count as boxes too. This is the gate that blanks the address
-key in \code{\link[=np_addr_key]{np_addr_key()}}: a box number is the address, so counting records
-at one counts the box's owners rather than a building's tenants
+\item \code{is_po_box}    \code{TRUE} if the street \emph{is} a mail receptacle with an
+identifier, else \code{FALSE}. Any spelling of the designator (\verb{PO BOX 12},
+\verb{P O BOX 12}, \verb{POBOX 12}, \verb{POB 12}, \verb{PO B 12}, \verb{PO 12}, \verb{BOX 12},
+\verb{PO BX 12}, \verb{PB 12}, \verb{PB BOX 12}, \verb{P B0X 12}, \verb{POSTAL OFC BOX 12},
+\verb{APDO 12}, \verb{DRAWER B}, \verb{PO DRAWER D}, \verb{POSTAL DRAWER 12}) and any
+identifier -- digits, or a single letter where the key ends, so the
+lettered boxes \verb{PO BOX A} through \verb{PO BOX Z} count as boxes too. One of
+the two gates that blank the address key in \code{\link[=np_addr_key]{np_addr_key()}}
+\item \code{is_mail_only} \code{TRUE} if the street names a mail-delivery point that has no
+building behind it \emph{and} no identifier this package will reduce to a box:
+\verb{GENERAL DELIVERY}, \verb{GEN DEL}, military mail (\verb{PSC 303 BOX 24},
+\verb{CMR 467 BOX 7000}, \code{APO}, \code{FPO}, \code{DPO}) and a university mail drawer
+named by two letters (\verb{DRAWER JJ EMORY UNIVERSITY}). The other gate on
+\code{\link[=np_addr_key]{np_addr_key()}}, and disjoint from \code{is_po_box} by construction, so the two
+flags partition the buildingless addresses. Unlike a box the key is \emph{not}
+rewritten, because there is no box number to rewrite it to. A rural route
+is deliberately not here: it is a unique delivery point, so \verb{RR 1 BOX 8}
+keeps its key, and measured that is safe -- the most crowded
+route-with-box address in the BMF holds 5 EINs
+\item \code{mail_key}     the box plus its ZIP (\code{"PO BOX 1234 59801"}), or \code{""} where
+the record names no identified box. The complement of the address key:
+blanking a box says two filers are not in one building, which is true and
+is all it says, while two filers collecting mail from the \emph{same} box are
+likely administered by the same people. Weight it by \code{\link[=np_mail_freq]{np_mail_freq()}}
+before believing it -- one BMF box holds 3,626 EINs. See \code{\link[=np_mail_key]{np_mail_key()}}
 \item \code{street_has_box} \code{TRUE} if the street \emph{carries} a box component, whether or
 not the whole street is one, so \code{is_po_box} implies \code{street_has_box}.
 \verb{211 EMMET ST S PO BOX}, \verb{300 KENAN CENTER DR CAMPUS BOX} and

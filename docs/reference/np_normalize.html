@@ -11,7 +11,7 @@ layer needs. Adds columns alongside the canonical ones:"></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">npnormalize</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.5</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.6</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -97,13 +97,31 @@ or from the <code>unit</code> column when the street line names none</id></desig
 <li><p><code>street_unit_id</code> the identifier alone, separators dropped ("STE D-2" -&gt;
 "D2"). Two records are compared on this, so a BMF "STE 300" and a source
 "# 300" are recognised as one office</p></li>
-<li><p><code>is_po_box</code>    <code>TRUE</code> if the street <em>is</em> a PO box, else <code>FALSE</code>. Any
-spelling of the designator (<code>PO BOX 12</code>, <code>P O BOX 12</code>, <code>POBOX 12</code>,
-<code>POB 12</code>, <code>PO B 12</code>, <code>PO 12</code>, <code>BOX 12</code>) and any identifier – digits, or a
-single letter where the key ends, so the lettered boxes <code>PO BOX A</code> through
-<code>PO BOX Z</code> count as boxes too. This is the gate that blanks the address
-key in <code><a href="np_tokenize.html">np_addr_key()</a></code>: a box number is the address, so counting records
-at one counts the box's owners rather than a building's tenants</p></li>
+<li><p><code>is_po_box</code>    <code>TRUE</code> if the street <em>is</em> a mail receptacle with an
+identifier, else <code>FALSE</code>. Any spelling of the designator (<code>PO BOX 12</code>,
+<code>P O BOX 12</code>, <code>POBOX 12</code>, <code>POB 12</code>, <code>PO B 12</code>, <code>PO 12</code>, <code>BOX 12</code>,
+<code>PO BX 12</code>, <code>PB 12</code>, <code>PB BOX 12</code>, <code>P B0X 12</code>, <code>POSTAL OFC BOX 12</code>,
+<code>APDO 12</code>, <code>DRAWER B</code>, <code>PO DRAWER D</code>, <code>POSTAL DRAWER 12</code>) and any
+identifier – digits, or a single letter where the key ends, so the
+lettered boxes <code>PO BOX A</code> through <code>PO BOX Z</code> count as boxes too. One of
+the two gates that blank the address key in <code><a href="np_tokenize.html">np_addr_key()</a></code></p></li>
+<li><p><code>is_mail_only</code> <code>TRUE</code> if the street names a mail-delivery point that has no
+building behind it <em>and</em> no identifier this package will reduce to a box:
+<code>GENERAL DELIVERY</code>, <code>GEN DEL</code>, military mail (<code>PSC 303 BOX 24</code>,
+<code>CMR 467 BOX 7000</code>, <code>APO</code>, <code>FPO</code>, <code>DPO</code>) and a university mail drawer
+named by two letters (<code>DRAWER JJ EMORY UNIVERSITY</code>). The other gate on
+<code><a href="np_tokenize.html">np_addr_key()</a></code>, and disjoint from <code>is_po_box</code> by construction, so the two
+flags partition the buildingless addresses. Unlike a box the key is <em>not</em>
+rewritten, because there is no box number to rewrite it to. A rural route
+is deliberately not here: it is a unique delivery point, so <code>RR 1 BOX 8</code>
+keeps its key, and measured that is safe – the most crowded
+route-with-box address in the BMF holds 5 EINs</p></li>
+<li><p><code>mail_key</code>     the box plus its ZIP (<code>"PO BOX 1234 59801"</code>), or <code>""</code> where
+the record names no identified box. The complement of the address key:
+blanking a box says two filers are not in one building, which is true and
+is all it says, while two filers collecting mail from the <em>same</em> box are
+likely administered by the same people. Weight it by <code><a href="np_mail_freq.html">np_mail_freq()</a></code>
+before believing it – one BMF box holds 3,626 EINs. See <code><a href="np_tokenize.html">np_mail_key()</a></code></p></li>
 <li><p><code>street_has_box</code> <code>TRUE</code> if the street <em>carries</em> a box component, whether or
 not the whole street is one, so <code>is_po_box</code> implies <code>street_has_box</code>.
 <code>211 EMMET ST S PO BOX</code>, <code>300 KENAN CENTER DR CAMPUS BOX</code> and

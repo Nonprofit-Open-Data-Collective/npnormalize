@@ -29,7 +29,15 @@ test_that("the signature is the pinned value", {
   #                      is read by one helper (.np_box_identifier) that the
   #                      key rewrite and street_num share, which also recovers
   #                      the box number on the POB and "PO <n>" spellings.
-  expect_identical(np_normalize_signature(), "v1-533f186c123357cf")
+  # v1-d49b18cc81ab79fb  0.1.6 -- the box vocabulary takes the spellings #13
+  #                      measured (PO BX, PB, P B0X, POSTAL OFC BOX, APDO,
+  #                      DRAWER); .np_mailonly_pat and .np_is_mailonly add
+  #                      is_mail_only, a second gate on the address key for
+  #                      general delivery and military mail; .np_mail_key adds
+  #                      the mail_key column; and .np_box_identifier reads the
+  #                      digits after the designator rather than anywhere in
+  #                      the key, which is what keeps "P B0X 102" off "PO BOX 0".
+  expect_identical(np_normalize_signature(), "v1-d49b18cc81ab79fb")
 })
 
 test_that("the signature is stable within a session and across calls", {

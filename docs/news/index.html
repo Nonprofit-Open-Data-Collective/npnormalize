@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">npnormalize</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.5</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.6</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -39,10 +39,52 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="0.1.5" id="npnormalize-015">npnormalize 0.1.5<a class="anchor" aria-label="anchor" href="#npnormalize-015"></a></h2>
-<p>An audit of PO-box detection against the 3,687,435-row unified BMF, the one defect it found that is this package’s to fix, and the first half of a fix for the four packages drifting apart on box patterns. The audit is <code>dev/audit-pobox.R</code>, kept as the record; it reads the <strong>raw</strong> street line rather than the key, because a spelling can only be judged against what the filer actually wrote.</p>
+<h2 class="pkg-version" data-toc-text="0.1.6" id="npnormalize-016">npnormalize 0.1.6<a class="anchor" aria-label="anchor" href="#npnormalize-016"></a></h2>
+<p>The policy question behind <a href="https://github.com/Nonprofit-Open-Data-Collective/npnormalize/issues/13" class="external-link">#13</a>, answered family by family, and the signal a blanked box was throwing away. <code><a href="../reference/np_tokenize.html">np_addr_key()</a></code> answers <em>same building?</em>, so every mail-delivery address has to be blank in it — leaving one in does not add a wrong row, it builds a cluster, because every box-holder in a ZIP becomes a co-tenant of every other and the address-sharing statistics then read that crowd as an office building. Four families were measured against that rule and two of them keep their key.</p>
 <div class="section level3">
-<h3 id="what-detection-looks-like-today-0-1-5">What detection looks like today<a class="anchor" aria-label="anchor" href="#what-detection-looks-like-today-0-1-5"></a></h3>
+<h3 id="the-box-vocabulary-takes-the-spellings-measured-0-1-6">The box vocabulary takes the spellings <a href="https://github.com/Nonprofit-Open-Data-Collective/npnormalize/issues/13" class="external-link">#13</a> measured<a class="anchor" aria-label="anchor" href="#the-box-vocabulary-takes-the-spellings-measured-0-1-6"></a></h3>
+<p><code>.np_box_head</code> gains <code>PO BX</code>, <code>PB</code> and <code>PB BOX</code>, <code>P BOX</code> and its zero-for-the-O typo <code>P B0X</code>, <code>POSTAL OFC BOX</code>, <code>APDO</code>, and the <code>DRAWER</code> family (bare, or behind <code>PO</code> / <code>POST OFC</code> / <code>POSTAL</code>). Over the 3,687,435-row unified BMF that is <strong>58 more rows detected and 0 lost</strong>, in 54 keys, every one of which is a box a filer spelled unusually.</p>
+<p>The identifier had to move with it. <code>.np_box_identifier()</code> read the first digit run in the whole key, which was correct only while no designator contained a digit — <code>P B0X 102</code> took the <code>0</code> out of <code>B0X</code> and keyed all four of those rows to <code>PO BOX 0</code>, which is the lettered-box collapse of <a href="https://github.com/Nonprofit-Open-Data-Collective/npnormalize/issues/12" class="external-link">#12</a> in a new place: two different boxes landing on one address. The digits are now read from what follows the designator, still anywhere after it, because a box number is routinely followed by more text (<code>PO BOX 102175 KOOSER RD</code>). Corpus-wide the identifier moved on <strong>0</strong> rows that 0.1.5 already called boxes.</p>
+<p>Measured and declined, so the decision is on the record rather than the spelling being missed: a bare <code>BX</code> (1 row), the unabbreviated <code>APARTADO</code> and <code>BUZON</code> (7), and <code>CALLER BOX</code> (1). <code>APARTADO</code> is the unabbreviated form of the <code>APDO</code> that was adopted, so it is the first candidate if this is revisited.</p>
+</div>
+<div class="section level3">
+<h3 id="is_mail_only-a-second-gate-on-the-address-key-0-1-6">
+<code>is_mail_only</code>, a second gate on the address key<a class="anchor" aria-label="anchor" href="#is_mail_only-a-second-gate-on-the-address-key-0-1-6"></a></h3>
+<p>A new column and a new pattern for the designators that have no building <em>and</em> no identifier to compare: <code>GENERAL DELIVERY</code> and <code>GEN DEL</code> (158 rows), military mail — <code>PSC</code> 236, <code>CMR</code> 63, <code>APO</code> 12, <code>FPO</code> 7, <code>DPO</code> 0 — and the university mail drawers named by two letters (<code>DRAWER AA UNIVERSITY OF MONTEVALLO</code>, 20 rows). 496 rows that <code>is_po_box</code> cannot see.</p>
+<p><code>GENERAL DELIVERY</code> is the clearest case in the corpus: 117 rows whose street is that exact string and nothing else, so the key was <code>GENERAL DELIVERY &lt;zip&gt;</code> and every general-delivery filer in a ZIP was counted as one building’s tenants.</p>
+<p>Two things it deliberately does not do. The street key is <strong>not</strong> rewritten — there is no box number to rewrite it to, and the string is the only thing the row says — and the flag is reported <strong>disjoint</strong> from <code>is_po_box</code>, so the two partition the buildingless addresses rather than overlapping on the drawers. A <code>DRAWER</code> sits in both vocabularies because <code>DRAWER B</code> has a comparable identifier and <code>DRAWER JJ EMORY UNIVERSITY</code> does not, and a caller should not have to know that. The address-key blank is the union either way, which is why <code>np_pattern("mailonly")</code> hands out the raw pattern: a SQL copy ORs the two and lands in the same place.</p>
+<p>Anchored at <code>^</code> with a word boundary and no identifier, none of these reaches a street: 0 of the 3,998 rural-route keys, 0 <code>BIN</code>, 0 of the <code>BOX ELDER</code> / <code>BOX SPGS</code> family, and <code>GEN DELANEY ST</code> is safe because <code>\b</code> cannot run into a street name. The one row it takes from a KEEP family is <code>APO MAILBOX 637 REED UN BLDG</code>, which is an APO address.</p>
+</div>
+<div class="section level3">
+<h3 id="what-keeps-its-address-key-and-why-0-1-6">What keeps its address key, and why<a class="anchor" aria-label="anchor" href="#what-keeps-its-address-key-and-why-0-1-6"></a></h3>
+<p>A <strong>rural route</strong> does, on the reasoning that it is unlike a box: it is a unique delivery point, so two filers at <code>RR 1 BOX 8</code> in one ZIP really are at one place. <a href="https://github.com/Nonprofit-Open-Data-Collective/npnormalize/issues/13" class="external-link">#13</a> worried that routes would crowd instead; measured, they do not. Across 4,606 route-with-box address keys the most crowded holds <strong>5</strong> EINs, and across 570 bare-route keys, <strong>2</strong>. The <code>street_num</code> collision <a href="https://github.com/Nonprofit-Open-Data-Collective/npnormalize/issues/13" class="external-link">#13</a> raised is real — <code>RR 1</code> parses <code>street_num</code> <code>1</code> — but with clusters that size it has nothing to amplify.</p>
+<p>A <strong>MAILBOX</strong> (123 rows) and a <strong>BIN</strong> (24) do too: both sit at a real street address, which the key keeps. <code>BIN</code> also still has a visible false positive at its volume, <code>1206 GRAIN BIN RD</code>.</p>
+<p>Together the two gates blank <strong>581,166 of 3,687,435 rows</strong>, 554 more than 0.1.5. The address key is un-blanked on 0 rows and otherwise unchanged on 0, and the distinct address-key count falls by 538.</p>
+</div>
+<div class="section level3">
+<h3 id="mail_key-what-a-blanked-box-still-tells-you-0-1-6">
+<code>mail_key</code>: what a blanked box still tells you<a class="anchor" aria-label="anchor" href="#mail_key-what-a-blanked-box-still-tells-you-0-1-6"></a></h3>
+<p>Blanking a box says two filers are not in one building. That is true, and it is all it says — but two organizations collecting mail from the <em>same</em> box are very likely administered by the same people, which is a different claim and a useful one. <code>mail_key</code> is the complement of the address key and carries it: the box and its ZIP (<code>"PO BOX 1234 59801"</code>), blank for everything else, including the mail-only designators, because <code>GENERAL DELIVERY 59801</code> would rebuild exactly the false crowd the blank just removed.</p>
+<p>It is idempotent on a rewritten <code>street_key</code>, which matters because matchdb caches that column and may hand back either form: <code>POB 25161</code>, <code>P O 25161</code> and <code>PO BOX 25161</code> all key to <code>PO BOX 25161 &lt;zip&gt;</code>. Corpus-wide 213 mail keys are built from more than one street key and every one is the same box spelled differently.</p>
+<p><strong>The count is not optional.</strong> 580,670 box rows fall into 496,830 mail keys, 7.43% of them shared by two or more EINs, and 20.79% of box-holding EINs sit on a shared box. But the populations at either end want opposite treatment: 30,097 of the 36,910 shared boxes hold exactly two EINs and 3,829 hold three — an organization and its foundation, a parent and its chapter — while 678 hold ten or more and the most crowded, <code>PO BOX 653067</code> in ZIP 75265, holds <strong>3,626</strong>. That is a service bureau, and reading it as common administration would link 3,626 unrelated organizations to each other. <code><a href="../reference/np_mail_freq.html">np_mail_freq()</a></code> is the counterpart to <code><a href="../reference/np_addr_freq.html">np_addr_freq()</a></code>’s <code>share_min</code> for exactly this, and its documentation carries the numbers.</p>
+</div>
+<div class="section level3">
+<h3 id="published-for-consumers-0-1-6">Published for consumers<a class="anchor" aria-label="anchor" href="#published-for-consumers-0-1-6"></a></h3>
+<ul><li>
+<code><a href="../reference/np_tokenize.html">np_is_mail_only()</a></code> joins <code><a href="../reference/np_tokenize.html">np_is_po_box()</a></code> and <code><a href="../reference/np_tokenize.html">np_has_box()</a></code> for a caller holding one free-text line.</li>
+<li>
+<code><a href="../reference/np_tokenize.html">np_mail_key()</a></code> joins <code><a href="../reference/np_tokenize.html">np_addr_key()</a></code>; <code><a href="../reference/np_mail_freq.html">np_mail_freq()</a></code> joins <code><a href="../reference/np_name_freq.html">np_name_freq()</a></code> and <code><a href="../reference/np_addr_freq.html">np_addr_freq()</a></code>.</li>
+<li>
+<code>np_pattern("mailonly")</code> joins <code>"pobox"</code>, <code>"box"</code> and <code>"unit_id"</code>. <code>test-portability.R</code> now runs all four through R’s TRE and DuckDB’s RE2 over a 45-key fixture and asserts they agree, and it asserts two things a hand-ported SQL macro gets wrong: that a macro reading only <code>"pobox"</code> is narrower than <code><a href="../reference/np_tokenize.html">np_addr_key()</a></code>, and that the identifier is capture group 2 — the drawer alternative nests a group inside the head, and it has to stay non-capturing or group 2 silently becomes the drawer prefix.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="signature-0-1-6">Signature<a class="anchor" aria-label="anchor" href="#signature-0-1-6"></a></h3>
+<p>This moves <code><a href="../reference/np_normalize_signature.html">np_normalize_signature()</a></code> to <code>v1-d49b18cc81ab79fb</code>. <code>is_po_box</code>, <code>street_key</code>, <code>street_num</code> and the address key all move on the rows above, and <code>is_mail_only</code> and <code>mail_key</code> are new columns, so <strong>matchdb must rebuild its derived columns</strong> — and should take <code>.md_pobox_pat</code> from <code>np_pattern("pobox")</code> and add the <code>"mailonly"</code> gate in the same change, or its <code>md_place_key()</code> macro will be narrower than <code><a href="../reference/np_tokenize.html">np_addr_key()</a></code> in two separate ways. npmatch needs no change: it reads <code>is_po_box</code> only, for <code>geo_pobox</code>.</p>
+<p>R CMD check: Status OK. 216 test assertions pass. # npnormalize 0.1.5</p>
+<p>An audit of PO-box detection against the 3,687,435-row unified BMF, the one defect it found that is this package’s to fix, and the first half of a fix for the four packages drifting apart on box patterns. The audit is <code>dev/audit-pobox.R</code>, kept as the record; it reads the <strong>raw</strong> street line rather than the key, because a spelling can only be judged against what the filer actually wrote.</p>
+</div>
+<div class="section level3">
+<h3 id="what-detection-looks-like-today-0-1-6">What detection looks like today<a class="anchor" aria-label="anchor" href="#what-detection-looks-like-today-0-1-6"></a></h3>
 <p>Nothing is being vacuumed up. <code>is_po_box</code> is 579,602 rows (15.718%) in 78,936 distinct keys, and of the 1,000 sampled detections (weighted by row), <strong>none</strong> lacks a box word on the raw line. Across the whole corpus only 30 rows do, and every one is a box written without a space — <code>PO762</code>, <code>PO25762</code>. By spelling:</p>
 <table class="table"><thead><tr class="header"><th>what matched</th>
 <th align="right">rows</th>
@@ -63,8 +105,8 @@
 </tr></tbody></table><p>The precision edge that does exist is the dual address line: 1,141 rows carry text after the box number, 136 of them a whole street (<code>PO BOX 102175 KOOSER RD</code>), and blanking the address key discards that street. Left as is — it is 0.031% of detections and the alternative is parsing two addresses out of one line.</p>
 </div>
 <div class="section level3">
-<h3 id="is_po_box-now-reads-a-lettered-box-0-1-5">
-<code>is_po_box</code> now reads a lettered box<a class="anchor" aria-label="anchor" href="#is_po_box-now-reads-a-lettered-box-0-1-5"></a></h3>
+<h3 id="is_po_box-now-reads-a-lettered-box-0-1-6">
+<code>is_po_box</code> now reads a lettered box<a class="anchor" aria-label="anchor" href="#is_po_box-now-reads-a-lettered-box-0-1-6"></a></h3>
 <p><a href="https://github.com/Nonprofit-Open-Data-Collective/npnormalize/issues/12" class="external-link">#12</a>. A box identifier is digits <strong>or a single letter where the key ends</strong>, so <code>PO BOX A</code> through <code>PO BOX Z</code> are boxes:</p>
 <ul><li>1,010 rows (0.027%) in 41 keys, 982 of them the <code>PO BOX &lt;letter&gt;</code> alphabet, led by B (119) and A (116). The other 28 are box lines truncated in the filing — <code>PO BO</code>, <code>POB</code>, <code>BOX R</code>. No street in the corpus has a whole key of a designator plus one letter.</li>
 <li>There is no building at <code>PO BOX Q</code>, but the digits-only pattern meant <code><a href="../reference/np_tokenize.html">np_addr_key()</a></code> kept their keys and counted their holders as a building’s tenants: <strong>105 of their 825 address keys hold two or more EINs</strong>, up to 15 at <code>PO BOX B 75785</code>.</li>
@@ -72,7 +114,7 @@
 </ul><p><strong>The letter has to survive the rewrite</strong>, and a new helper <code>.np_box_identifier()</code> is what makes it: <code><a href="../reference/np_normalize.html">np_normalize()</a></code>’s <code>"PO BOX &lt;id&gt;"</code> rewrite read <code>[0-9]+</code>, so a widened flag alone would have rewritten <code>PO BOX A</code> and <code>PO BOX B</code> to the same bare <code>PO BOX</code> — two different boxes collapsed onto one address, worse than not flagging them. <code>.np_parse_street()</code> reads the same helper, so the key and <code>street_num</code> always name the same box. That also recovers 236 rows whose box number was <code>NA</code>: the old parse required the literal word <code>BOX</code>, so <code>POB 25161</code> and <code>PO 1609</code> lost theirs although the key says <code>PO BOX 25161</code>.</p>
 </div>
 <div class="section level3">
-<h3 id="one-vocabulary-and-a-way-for-other-packages-to-read-it-0-1-5">One vocabulary, and a way for other packages to read it<a class="anchor" aria-label="anchor" href="#one-vocabulary-and-a-way-for-other-packages-to-read-it-0-1-5"></a></h3>
+<h3 id="one-vocabulary-and-a-way-for-other-packages-to-read-it-0-1-6">One vocabulary, and a way for other packages to read it<a class="anchor" aria-label="anchor" href="#one-vocabulary-and-a-way-for-other-packages-to-read-it-0-1-6"></a></h3>
 <p>The four packages had drifted. pfmatch kept <code>.PF_BOX_RE</code>, an <em>unanchored</em> <code>BOX</code> that claims 127 BMF rows whose street is merely <em>named</em> for a box (<code>BOX ELDER ST</code>, <code>BOX SPGS RD</code>); matchdb keeps <code>.md_pobox_pat</code>, a hand-typed copy of this package’s pattern, because DuckDB’s R client registers data frames, not scalar UDFs, so a SQL macro cannot call <code><a href="../reference/np_tokenize.html">np_addr_key()</a></code>.</p>
 <ul><li>
 <code>.np_box_head</code> and <code>.np_box_id</code> are the vocabulary; <code>.np_pobox_pat</code> is composed from them, and <code>.np_unit_id_strip</code> is lifted out of <code><a href="../reference/np_tokenize.html">np_unit_id()</a></code> for the same reason. Only the composed values are in the signature registry — editing a piece still moves the signature, rearranging the pieces does not.</li>
@@ -84,7 +126,7 @@
 <code>test-portability.R</code> runs each published pattern through <strong>both</strong> engines over one fixture and asserts they agree, and asserts the composition. That is what keeps a SQL copy honest rather than merely hand-ported.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="downstream-0-1-5">Downstream<a class="anchor" aria-label="anchor" href="#downstream-0-1-5"></a></h3>
+<h3 id="downstream-0-1-6">Downstream<a class="anchor" aria-label="anchor" href="#downstream-0-1-6"></a></h3>
 <ul><li>
 <strong>This moves the signature</strong>, to <code>v1-533f186c123357cf</code>: <code>is_po_box</code>, <code>street_key</code>, <code>street_num</code> and the address key all move on the rows above, so matchdb must rebuild its derived columns. It should take <code>.md_pobox_pat</code> from <code>np_pattern("pobox")</code> in the same change, or its <code>md_place_key()</code> macro will be narrower than <code><a href="../reference/np_tokenize.html">np_addr_key()</a></code>.</li>
 <li>
@@ -93,7 +135,7 @@
 <strong>npmatch</strong> needs no change: it reads <code>is_po_box</code> only for <code>geo_pobox</code>.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="measured-and-not-changed-0-1-5">Measured and not changed<a class="anchor" aria-label="anchor" href="#measured-and-not-changed-0-1-5"></a></h3>
+<h3 id="measured-and-not-changed-0-1-6">Measured and not changed<a class="anchor" aria-label="anchor" href="#measured-and-not-changed-0-1-6"></a></h3>
 <ul><li>The bare designator — a key that is <code>PO BOX</code> and nothing else, 460 rows — is still not a box, and <code><a href="../reference/np_tokenize.html">np_addr_key()</a></code> still keys it. <a href="https://github.com/Nonprofit-Open-Data-Collective/npnormalize/issues/12" class="external-link">#12</a> suspected this collapsed a ZIP’s boxes onto one address; it does not. Those 460 rows hold 455 address keys, 4 of which have two or more EINs, at most 3.</li>
 <li>The designator families <code>is_po_box</code> does <strong>not</strong> see are left for their own issue, with the measurement in <code>dev/audit-pobox.R</code> section C: rural routes carrying a box (<code>RR 1 BOX 8</code>, 4,625 rows), military <code>PSC</code> / <code>APO</code> / <code>FPO</code> (343), <code>GENERAL DELIVERY</code> (164), <code>DRAWER</code> (77), and the long tail of <code>PO BX</code>, <code>BX</code>, <code>PB</code>, <code>POSTAL</code>, <code>APARTADO</code> and <code>BUZON</code> (a dozen rows each or fewer). <code>PMB</code> (13,700 rows) is deliberately not among them: a private mailbox sits at a real street address, which the key keeps.</li>
 </ul></div>

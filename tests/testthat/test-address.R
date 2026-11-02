@@ -153,11 +153,20 @@ test_that("is_po_box implies street_has_box, and a BOX-named street implies neit
   expect_false(any(o2$street_has_box))
   expect_false(any(o2$is_po_box))
 
-  # DRAWER and BIN were measured and left out (55 and 28 rows), so they are not
-  # box words here; a missing street is not a box either.
-  d3 <- np_test_frame(.ein = c("1", "2", "3", "4"), name = "ACME", state = "GA",
-                      street = c("PO DRAWER 220", "1535 W JEFFERSON ST BIN 42", NA, ""))
+  # BIN was measured and left out (28 rows, against a visible false positive at
+  # that volume -- 1206 GRAIN BIN RD), so it is not a box word here; a missing
+  # street is not a box either. DRAWER was also out until 0.1.6, which adopted
+  # it on the policy call in #13: a drawer has no building, so the row below
+  # moved deliberately and is asserted the other way.
+  d3 <- np_test_frame(.ein = c("1", "2", "3"), name = "ACME", state = "GA",
+                      street = c("1535 W JEFFERSON ST BIN 42", NA, ""))
   expect_false(any(np_normalize(d3)$street_has_box))
+  d4 <- np_test_frame(.ein = "4", name = "ACME", state = "GA",
+                      street = "PO DRAWER 220")
+  o4 <- np_normalize(d4)
+  expect_true(o4$is_po_box)          # 0.1.6: a drawer is a box
+  expect_true(o4$street_has_box)     # so the implication still holds
+  expect_equal(o4$street_key, "PO BOX 220")
 })
 
 test_that("a lettered box is a box, and the widening keeps what the digits form caught", {
@@ -207,10 +216,157 @@ test_that("np_is_po_box(), np_has_box() and np_pattern() are how a consumer asks
   # The literals, for a consumer that cannot call an R function at all --
   # matchdb's DuckDB macros. Read from here rather than retyped.
   expect_identical(np_pattern("pobox"), npnormalize:::.np_pobox_pat)
+  expect_identical(np_pattern("mailonly"), npnormalize:::.np_mailonly_pat)
   expect_identical(np_pattern("box"), npnormalize:::.np_box_pat)
   expect_identical(np_pattern("unit_id"), npnormalize:::.np_unit_id_strip)
   expect_identical(np_pattern(), npnormalize:::.np_pobox_pat)
   expect_error(np_pattern("nope"))
+})
+
+test_that("the designators #13 named are boxes, and nothing is given up for them", {
+  # #13, measured in dev/audit-pobox.R section C. Each is a spelling a filer
+  # actually used that is_po_box could not see: PO BX 2 rows, PB / PB BOX 12,
+  # P B0X 4, POSTAL OFC BOX 1, APDO 1, and the drawers 53 anchored.
+  widened <- c("PO BX 24514", "PB 150", "PB BOX 6128", "P B0X 102",
+               "POSTAL OFC BOX 54", "APDO 1391", "POSTAL DRAWER 1549",
+               "DRAWER B", "PO DRAWER D", "P O DRAWER B", "DRAWERA")
+  expect_true(all(np_is_po_box(widened)))
+  expect_equal(np_addr_key(.np_street_key(widened), "59801"),
+               rep("", length(widened)))
+  # Nothing the 0.1.5 pattern caught is given up: over the 3,687,435-row BMF the
+  # widened pattern gains 58 rows and loses 0, and the address key is blanked on
+  # 554 more rows while 0 are un-blanked and 0 otherwise change.
+  kept <- c("PO BOX 5371 MSC RC 507", "PO BOX 102175 KOOSER RD", "BOX 870136",
+            "PO 1609", "POB 25161", "PO B 445", "POBOX 76", "PO BOX 1367",
+            "PO BOX A", "PO BOX Z")
+  expect_true(all(np_is_po_box(kept)))
+  # The variants the audit measured and #13 did NOT adopt. Each is a genuine
+  # box, so this records a decision rather than a defect: a bare BX (1 row),
+  # the unabbreviated APARTADO and BUZON (7), CALLER BOX (1).
+  declined <- c("BX 464 RT 50", "APARTADO POSTAL 578", "BUZON 5008 BO DAGUAO",
+                "CALLER BOX C 268")
+  expect_false(any(np_is_po_box(declined)))
+})
+
+test_that("the box identifier is read after the designator, not from the key", {
+  # "P B0X 102" is a filer's zero for the O, 4 BMF rows. Reading the first digit
+  # run of the whole key took the 0 out of B0X and keyed all four to "PO BOX 0"
+  # -- the lettered-box collapse of #12 in a new place, two different boxes
+  # landing on one address. The digits come from what follows the head.
+  z <- c("P B0X 102", "P B0X 626", "P B0X 962", "P B0X 31603")
+  expect_equal(.np_box_identifier(z), c("102", "626", "962", "31603"))
+  expect_equal(np_mail_key(z, "58623"),
+               paste("PO BOX", c("102", "626", "962", "31603"), "58623"))
+  # Still found ANYWHERE after the head, because a box number is routinely
+  # followed by more text -- 1,141 BMF rows carry a mail stop, 136 a street.
+  expect_equal(.np_box_identifier("PO BOX 102175 KOOSER RD"), "102175")
+  expect_equal(.np_box_identifier("DRAWER B"), "B")
+  # and it did not move for any box 0.1.5 already knew: 0 rows corpus-wide
+  expect_equal(.np_box_identifier(c("PO BOX 1234", "POB 25161", "PO 1609")),
+               c("1234", "25161", "1609"))
+})
+
+test_that("a mail-only address has no building and gets no key of either kind", {
+  # The other half of #13's policy question, and the clearest case in the
+  # corpus: GENERAL DELIVERY is 158 rows whose street IS the entire address, so
+  # np_addr_key() was counting every general-delivery filer in a ZIP as one
+  # building's tenants. Military mail is 318 rows on the same argument.
+  mail <- c("GENERAL DELIVERY", "GEN DEL", "PSC 303 BOX 24", "CMR 467 BOX 7000",
+            "APO", "FPO AP 96310", "DRAWER JJ EMORY UNIVERSITY",
+            "POST OFC DRAWER NINE")
+  expect_true(all(np_is_mail_only(mail)))
+  k <- .np_street_key(mail)
+  expect_equal(np_addr_key(k, "59801"), rep("", length(mail)))
+  # and no mail key either: "GENERAL DELIVERY 59801" would rebuild exactly the
+  # false crowd the blank just removed, one ZIP of unrelated filers as one box.
+  expect_equal(np_mail_key(k, "59801"), rep("", length(mail)))
+  # The street key is KEPT, unlike a box's. There is no box number to rewrite it
+  # to, and the string is the only thing the row says.
+  o <- np_normalize(np_test_frame(.ein = c("01", "02"), name = "ACME",
+    state = "MT", street = c("General Delivery", "PSC 303 Box 24")))
+  expect_equal(o$street_key, c("GENERAL DELIVERY", "PSC 303 BOX 24"))
+  expect_true(all(o$is_mail_only))
+  expect_false(any(o$is_po_box))
+  expect_equal(o$mail_key, c("", ""))
+})
+
+test_that("is_po_box and is_mail_only partition the buildingless addresses", {
+  # A DRAWER is in both vocabularies on purpose -- "DRAWER B" has a comparable
+  # identifier and "DRAWER JJ EMORY UNIVERSITY" does not -- and a caller should
+  # not have to know that. Disjoint corpus-wide: 0 of 3,687,435 rows report both.
+  both <- c("DRAWER B", "PO DRAWER D", "DRAWER JJ EMORY UNIVERSITY",
+            "POST OFC DRAWER NINE", "GENERAL DELIVERY", "PO BOX 12",
+            "123 MAIN ST")
+  expect_false(any(np_is_po_box(both) & np_is_mail_only(both)))
+  expect_equal(np_is_po_box(both),
+               c(TRUE, TRUE, FALSE, FALSE, FALSE, TRUE, FALSE))
+  expect_equal(np_is_mail_only(both),
+               c(FALSE, FALSE, TRUE, TRUE, TRUE, FALSE, FALSE))
+  expect_identical(np_is_mail_only(NA_character_), FALSE)
+  # The address-key blank is the UNION, which is why np_pattern("mailonly")
+  # hands out the raw pattern: a SQL copy ORs the two and lands here too.
+  expect_equal(nzchar(np_addr_key(.np_street_key(both), "59801")),
+               !(np_is_po_box(both) | np_is_mail_only(both)))
+})
+
+test_that("a rural route, a mailbox and a bin keep their address key", {
+  # The policy call that goes the other way, and the reason is that a route is
+  # unlike a box: it is a unique delivery point, so two filers at "RR 1 BOX 8"
+  # in one ZIP really are at one place. Measured, it also does not crowd --
+  # across 4,606 route-with-box address keys the most crowded holds 5 EINs, and
+  # across 570 bare-route keys, 2. A MAILBOX and a BIN sit at a street address.
+  keep <- c("RR 1 BOX 8", "RR 2 BOX 280", "HC 81 BOX 363 5", "RR 1",
+            "1821 FULTON ST MAILBOX 1", "PO BIN 7070", "1206 GRAIN BIN RD",
+            "22009 BOX ELDER RD", "BOXWOOD LN", "GEN DELANEY ST")
+  expect_false(any(np_is_po_box(keep)))
+  expect_false(any(np_is_mail_only(keep)))
+  k <- .np_street_key(keep)
+  expect_equal(np_addr_key(k, "59801"), paste(k, "59801"))
+  # GEN DELANEY ST is why the mail-only designators take a word boundary and no
+  # identifier: \b cannot run into a street name, so "GEN DEL" is safe anchored.
+  expect_false(np_is_mail_only("GEN DELANEY ST"))
+})
+
+test_that("np_mail_key() is the complement of np_addr_key()", {
+  # Blanking a box says two filers are not in one building, which is true and is
+  # all it says. Two filers collecting mail from the SAME box are likely
+  # administered by the same people; this key is what carries that.
+  sk <- c("PO BOX 1234", "GENERAL DELIVERY", "123 MAIN ST", "", NA)
+  z  <- rep("59801", 5)
+  expect_equal(np_addr_key(sk, z), c("", "", "123 MAIN ST 59801", "", ""))
+  expect_equal(np_mail_key(sk, z), c("PO BOX 1234 59801", "", "", "", ""))
+  # never both: an address is a building or a receptacle, not each
+  expect_false(any(nzchar(np_addr_key(sk, z)) & nzchar(np_mail_key(sk, z))))
+  # Idempotent on a rewritten key, because matchdb caches street_key and may
+  # hand back either form. Corpus-wide 213 mail keys are built from more than
+  # one street key, and every one is the same box spelled differently.
+  expect_equal(np_mail_key(c("POB 25161", "PO BOX 25161", "P O 25161"), "39217"),
+               rep("PO BOX 25161 39217", 3L))
+  # the ZIP is half the key: one box number in two towns is two boxes
+  expect_false(identical(np_mail_key("PO BOX 12", "59801"),
+                         np_mail_key("PO BOX 12", "10001")))
+  expect_equal(np_mail_key(character(0), character(0)), character(0))
+})
+
+test_that("np_mail_freq() counts shared boxes and drops the unkeyed", {
+  # A shared box is interpretable only with its count. 30,097 of the BMF's
+  # 36,910 shared boxes hold exactly two EINs -- an org and its foundation, a
+  # parent and its chapter -- while 678 hold ten or more and the most crowded
+  # holds 3,626, which is a service bureau and evidence of nothing.
+  f <- np_mail_freq(c("PO BOX 1 59801", "PO BOX 1 59801", "PO BOX 2 59801",
+                      "", NA, "PO BOX 1 10001"))
+  expect_equal(f[["PO BOX 1 59801"]], 2L)
+  expect_equal(f[["PO BOX 2 59801"]], 1L)
+  expect_equal(f[["PO BOX 1 10001"]], 1L)
+  # the records naming no box must not pile onto one entry
+  expect_false("" %in% names(f))
+  expect_length(f, 3L)
+  # and it reads the column np_normalize() writes
+  o <- np_normalize(np_test_frame(.ein = c("01", "02", "03"), name = "ACME",
+    state = "MT", street = c("PO Box 7", "P.O. Box 7", "123 Main St"),
+    zip5 = "59801"))
+  expect_equal(o$mail_key, c("PO BOX 7 59801", "PO BOX 7 59801", ""))
+  expect_equal(unname(np_mail_freq(o$mail_key)), 2L)
 })
 
 test_that("the street parse treats only an ANCHORED box as a box", {
