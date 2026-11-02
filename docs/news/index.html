@@ -63,11 +63,14 @@
 <td><code>10 S 462 CARRINGTON CIR</code></td>
 </tr></tbody></table><p><code>1002E</code> is not a door, and the key no longer met the spelling of the same door filed with a space — the split <a href="https://github.com/Nonprofit-Open-Data-Collective/npnormalize/issues/16" class="external-link">#16</a> set out to close, reintroduced one row over.</p>
 <p><code>.np_hyphen_house</code> now excludes <code>N</code>, <code>S</code>, <code>E</code> and <code>W</code> where they stand alone, and only there: <code>123-A MAIN ST</code> is a lettered house number and still joins, because <code>A</code> is not a compass point. A spelled-out direction was never a single letter to the join, so <code>123-EAST MAIN ST</code> was already left alone. The cost is a unit letter that happens to be a compass point (<code>123-E</code> meaning unit E), which is spaced instead — which is what 0.1.6 did to every lettered house number.</p>
+<p>To be clear about what this does <em>not</em> fix: every other lettered house number still keys apart from its spaced spelling. <code>875-A ISLAND DRIVE</code> reaches <code>875A ISLAND DR</code> and <code>875 A ISLAND DRIVE</code> reaches <code>875 A ISLAND DR</code>, as do <code>57-C</code> and <code>1801-C</code>. That is the ordinary and larger case; the carve-out only moves <code>N</code>, <code>S</code>, <code>E</code> and <code>W</code> out of it, because a compass letter is the one whose spaced spelling is certainly the same address.</p>
 <p>Measured over matchdb’s address table: 459 strings move, closing 39 of the join’s 1,496 EIN-level address splits.</p>
 </div>
 <div class="section level3">
 <h3 id="the-splits-the-join-still-leaves-and-why-0-1-8">The splits the join still leaves, and why<a class="anchor" aria-label="anchor" href="#the-splits-the-join-still-leaves-and-why-0-1-8"></a></h3>
-<p>The same measurement found what <a href="https://github.com/Nonprofit-Open-Data-Collective/npnormalize/issues/16" class="external-link">#16</a>’s adoption note could not: the join merges 7,583 address groups and splits 1,496, and every one of those 1,496 is a single address filed two ways, with 0 of them two different streets.</p>
+<p>The same measurement found what <a href="https://github.com/Nonprofit-Open-Data-Collective/npnormalize/issues/16" class="external-link">#16</a>’s adoption note could not: the join merges 7,583 address groups and splits 1,496.</p>
+<p>Two counts appear below and they are not the same population. <strong>1,496</strong> is the join’s own, isolated by re-deriving every affected street with and without <code>.np_join_house_number()</code>; it is the figure to cite for what this rule does. <strong>1,499</strong> is what the 0.1.3 → 0.1.8 diff reported, which carries four releases, and it is the set the classification below was run over. The difference is the other releases, not uncertainty about the join.</p>
+<p>Those splits were then classified over the 1,499 the diff reported, and not one of them differs in anything beyond its separators: 505 are the same raw string once every mark is stripped, and in the other 994 the two keys agree once their spaces are. That is a test on strings, not a reading of addresses, and for 20 of the 1,499 it does not settle which street — <code>1049-38 STREET</code> against <code>1049 38 ST STE 400</code> could be a house number on an unnamed numeric street or a house number on a numbered one, and nothing in either string says which. <code>street_num</code> is no help: it disagrees across all 1,499, which is what the join does to it by design.</p>
 <table class="table"><thead><tr class="header"><th>the three spellings of one Queens door</th>
 <th>0.1.3 key</th>
 <th>0.1.8 key</th>
@@ -103,8 +106,26 @@
 </tr><tr class="even"><td><code>15039 4H CENTER LN</code></td>
 <td><code>150394H CENTER LN</code></td>
 <td>4-H Center Lane</td>
-</tr></tbody></table><p>17,614 of those 92,797 are a house number followed by a bare numeric or single-letter street name, which is the shape the rule cannot tell from a hyphenated house number; the rest include the cases above. So the merges it adds are not all real, which is the same verdict an earlier measurement reached for the blunter version of the idea — keying on <code>gsub(" ", "", street_key)</code> added 2,278 merges of which 972 (42.67%) joined rows whose <code>street_num</code> disagreed.</p>
-<p>The 1,457 splits that remain are therefore deliberate: 0.0066% of the address table, against 7,566 merges, and the alternative is worse. A consumer that would rather have the merges can key on the house number itself — <code>street_num</code> is now the whole number on both spellings. # npnormalize 0.1.7</p>
+</tr></tbody></table><p>17,614 of those 92,797 are a house number followed by a bare numeric or single-letter street name, which is the shape the rule cannot tell from a hyphenated house number; the rest include the cases above. So the merges it adds are not all real.</p>
+<p><strong>The blunter version of the idea now argues less strongly against itself, and that is worth saying plainly.</strong> pfmatch measured a full space strip — <code>gsub(" ", "", street_key)</code> — under 0.1.6 and found 2,278 merges of which 972 (42.67%) joined rows whose <code>street_num</code> disagreed. Re-measured under this signature, the same script over the same 3,880,431-row reference gives 1,886 merges with 322 (17.07%) disagreeing, because the house-number join had already done part of that key’s work on the hyphenated spellings (pfmatch <code>dev/ADDR-KEY-SPELLINGS-20261102.log</code>). 1,886 with 322 suspect is a better trade than 2,278 with 972, so that figure no longer carries the rejection: it says a blanket space strip is less bad than it was, not that it is safe. What carries the rejection is the 92,797 strings above, measured over 22,026,817 rows, which is a kind of evidence a 3.88M-row reference cannot produce.</p>
+<p>The 1,457 splits that remain are therefore deliberate: 0.0066% of the address table, against 7,566 merges, and the alternative is worse.</p>
+<p><strong>There is no consumer-side escape hatch, and an earlier draft of this note wrongly offered one.</strong> It said a consumer who would rather have the merges could key on <code>street_num</code>, “now the whole number on both spellings”. It is not: it is the whole number on the <em>hyphenated</em> spelling only, which is what the join is for.</p>
+<table class="table"><thead><tr class="header"><th>street</th>
+<th><code>street_key</code></th>
+<th><code>street_num</code></th>
+</tr></thead><tbody><tr class="odd"><td><code>70-11 150TH STREET</code></td>
+<td><code>7011 150TH ST</code></td>
+<td><code>7011</code></td>
+</tr><tr class="even"><td><code>70 11 150TH STREET</code></td>
+<td><code>70 11 150TH ST</code></td>
+<td><code>70</code></td>
+</tr><tr class="odd"><td><code>875-A ISLAND DRIVE</code></td>
+<td><code>875A ISLAND DR</code></td>
+<td><code>875A</code></td>
+</tr><tr class="even"><td><code>875 A ISLAND DRIVE</code></td>
+<td><code>875 A ISLAND DR</code></td>
+<td><code>875</code></td>
+</tr></tbody></table><p>So keying on <code>street_num</code> reproduces the split rather than closing it, for every one of the ~1,500. It merges the hyphenated spelling with the closed-up one, which <code>street_key</code> already does. Reported by a pfmatch reviewer who probed the suggestion instead of taking it. # npnormalize 0.1.7</p>
 <p>Two spelling problems, one on each side of the frame, both of them a case where the normalizer split one thing into two keys. Neither was a typo class: a hyphenated house number is how whole jurisdictions write an address, and a word broken across two tokens is a fixed-width line break in the filing.</p>
 </div>
 <div class="section level3">

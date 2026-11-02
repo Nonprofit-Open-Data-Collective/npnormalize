@@ -29,14 +29,37 @@ letter to the join, so `123-EAST MAIN ST` was already left alone. The cost is a
 unit letter that happens to be a compass point (`123-E` meaning unit E), which
 is spaced instead — which is what 0.1.6 did to every lettered house number.
 
+To be clear about what this does *not* fix: every other lettered house number
+still keys apart from its spaced spelling. `875-A ISLAND DRIVE` reaches
+`875A ISLAND DR` and `875 A ISLAND DRIVE` reaches `875 A ISLAND DR`, as do
+`57-C` and `1801-C`. That is the ordinary and larger case; the carve-out only
+moves `N`, `S`, `E` and `W` out of it, because a compass letter is the one
+whose spaced spelling is certainly the same address.
+
 Measured over matchdb's address table: 459 strings move, closing 39 of the
 join's 1,496 EIN-level address splits.
 
 ## The splits the join still leaves, and why
 
 The same measurement found what #16's adoption note could not: the join merges
-7,583 address groups and splits 1,496, and every one of those 1,496 is a single
-address filed two ways, with 0 of them two different streets.
+7,583 address groups and splits 1,496.
+
+Two counts appear below and they are not the same population. **1,496** is the
+join's own, isolated by re-deriving every affected street with and without
+`.np_join_house_number()`; it is the figure to cite for what this rule does.
+**1,499** is what the 0.1.3 → 0.1.8 diff reported, which carries four releases,
+and it is the set the classification below was run over. The difference is the
+other releases, not uncertainty about the join.
+
+Those splits were then classified over the 1,499 the diff
+reported, and not one of them differs in anything beyond its separators: 505
+are the same raw string once every mark is stripped, and in the other 994 the
+two keys agree once their spaces are. That is a test on strings, not a reading
+of addresses, and for 20 of the 1,499 it does not settle which street —
+`1049-38 STREET` against `1049 38 ST STE 400` could be a house number on an
+unnamed numeric street or a house number on a numbered one, and nothing in
+either string says which. `street_num` is no help: it disagrees across all
+1,499, which is what the join does to it by design.
 
 | the three spellings of one Queens door | 0.1.3 key | 0.1.8 key |
 |---|---|---|
@@ -69,15 +92,42 @@ moves are street names.
 17,614 of those 92,797 are a house number followed by a bare numeric or
 single-letter street name, which is the shape the rule cannot tell from a
 hyphenated house number; the rest include the cases above. So the merges it
-adds are not all real, which is the same verdict an earlier measurement reached
-for the blunter version of the idea — keying on `gsub(" ", "", street_key)`
-added 2,278 merges of which 972 (42.67%) joined rows whose `street_num`
-disagreed.
+adds are not all real.
+
+**The blunter version of the idea now argues less strongly against itself, and
+that is worth saying plainly.** pfmatch measured a full space strip —
+`gsub(" ", "", street_key)` — under 0.1.6 and found 2,278 merges of which 972
+(42.67%) joined rows whose `street_num` disagreed. Re-measured under this
+signature, the same script over the same 3,880,431-row reference gives 1,886
+merges with 322 (17.07%) disagreeing, because the house-number join had already
+done part of that key's work on the hyphenated spellings
+(pfmatch `dev/ADDR-KEY-SPELLINGS-20261102.log`). 1,886 with 322 suspect is a
+better trade than 2,278 with 972, so that figure no longer carries the
+rejection: it says a blanket space strip is less bad than it was, not that it
+is safe. What carries the rejection is the 92,797 strings above, measured over
+22,026,817 rows, which is a kind of evidence a 3.88M-row reference cannot
+produce.
 
 The 1,457 splits that remain are therefore deliberate: 0.0066% of the address
-table, against 7,566 merges, and the alternative is worse. A consumer that
-would rather have the merges can key on the house number itself — `street_num`
-is now the whole number on both spellings.
+table, against 7,566 merges, and the alternative is worse.
+
+**There is no consumer-side escape hatch, and an earlier draft of this note
+wrongly offered one.** It said a consumer who would rather have the merges
+could key on `street_num`, "now the whole number on both spellings". It is not:
+it is the whole number on the *hyphenated* spelling only, which is what the
+join is for.
+
+| street | `street_key` | `street_num` |
+|---|---|---|
+| `70-11 150TH STREET` | `7011 150TH ST` | `7011` |
+| `70 11 150TH STREET` | `70 11 150TH ST` | `70` |
+| `875-A ISLAND DRIVE` | `875A ISLAND DR` | `875A` |
+| `875 A ISLAND DRIVE` | `875 A ISLAND DR` | `875` |
+
+So keying on `street_num` reproduces the split rather than closing it, for
+every one of the ~1,500. It merges the hyphenated spelling with the closed-up
+one, which `street_key` already does. Reported by a pfmatch reviewer who probed
+the suggestion instead of taking it.
 # npnormalize 0.1.7
 
 Two spelling problems, one on each side of the frame, both of them a case where

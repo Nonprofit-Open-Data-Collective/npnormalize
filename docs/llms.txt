@@ -106,9 +106,9 @@ spelling filed with a space. Where the same address is filed both
 hyphenated and spaced the two still key apart — `27-41 HORSENECK RD`
 against `27 41 HORSENECK RD` — because a space-separated run cannot be
 told from a house number followed by a numeric street name. Joining
-those as well was measured and rejected: it closes 1,156 of matchdb’s
-1,490 address splits and fuses `5001 11 MILE RD` into `500111 MILE RD`,
-`712 H STREET NE` into `712H ST NE`, and 92,795 more.
+those as well was measured and rejected: it closes roughly
+three-quarters of the splits and fuses `5001 11 MILE RD` into
+`500111 MILE RD`, `712 H STREET NE` into `712H ST NE`, and 92,795 more.
 
 **A port of the name rules must apply `split_words` before `abbrev`.**
 `np_name_rules()` now returns both. A filing whose fixed-width line
