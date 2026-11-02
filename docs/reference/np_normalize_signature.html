@@ -13,7 +13,7 @@ behind npmatch::np_ref_index()."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">npnormalize</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.6</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.7</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -105,7 +105,7 @@ change to the normalizer itself.</p>
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">sig</span> <span class="op">&lt;-</span> <span class="fu">np_normalize_signature</span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">sig</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "v1-d49b18cc81ab79fb"</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "v1-59c6e84c5f38e9f5"</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># which components make it up</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="fu">np_normalize_signature</span><span class="op">(</span>detail <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">$</span><span class="va">components</span><span class="op">)</span></span></span>
@@ -114,22 +114,23 @@ change to the normalizer itself.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  [7] ".np_canon_form"         ".np_clean_name"         ".np_core_stop"         </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [10] ".np_directions"         ".np_doc_freq"           ".np_extract_direction" </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [13] ".np_extract_form"       ".np_extract_generation" ".np_extract_numbers"   </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [16] ".np_extract_ordinals"   ".np_extract_unit"       ".np_gen_rank"          </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [19] ".np_generation"         ".np_has_box"            ".np_is_mailonly"       </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [22] ".np_is_placeholder"     ".np_is_pobox"           ".np_legal_suffixes"    </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [25] ".np_mail_key"           ".np_mailonly_pat"       ".np_map_special"       </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [28] ".np_name_core"          ".np_norm_unit"          ".np_ordinals"          </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [31] ".np_parse_street"       ".np_parse_zip"          ".np_pick_unit"         </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [34] ".np_placeholder_re"     ".np_placeholder_tok"    ".np_pobox_pat"         </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [37] ".np_replace_tokens"     ".np_special_letters"    ".np_state_abbr"        </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [40] ".np_state_codes"        ".np_street_key"         ".np_street_type_set"   </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [43] ".np_street_types"       ".np_strip_joiners"      ".np_strip_lead_the"    </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [46] ".np_strip_suffix"       ".np_to_state_abb"       ".np_tokenize"          </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [49] ".np_tokens"             ".np_unit_designators"   ".np_unit_id"           </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [52] ".np_unit_id_strip"      ".np_unit_pat"           ".np_unit_rank"         </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [55] "np_addr_freq"           "np_mail_freq"           "np_name_core"          </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [58] "np_name_freq"           "np_name_placeholder"    "np_normalize"          </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [61] "np_stopwords"           "np_token_idf"          </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [16] ".np_extract_ordinals"   ".np_extract_unit"       ".np_fold_split"        </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [19] ".np_gen_rank"           ".np_generation"         ".np_has_box"           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [22] ".np_hyphen_house"       ".np_is_mailonly"        ".np_is_placeholder"    </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [25] ".np_is_pobox"           ".np_join_house_number"  ".np_legal_suffixes"    </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [28] ".np_mail_key"           ".np_mailonly_pat"       ".np_map_special"       </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [31] ".np_name_core"          ".np_norm_unit"          ".np_ordinals"          </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [34] ".np_parse_street"       ".np_parse_zip"          ".np_pick_unit"         </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [37] ".np_placeholder_re"     ".np_placeholder_tok"    ".np_pobox_pat"         </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [40] ".np_replace_tokens"     ".np_special_letters"    ".np_split_words"       </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [43] ".np_state_abbr"         ".np_state_codes"        ".np_street_key"        </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [46] ".np_street_type_set"    ".np_street_types"       ".np_strip_joiners"     </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [49] ".np_strip_lead_the"     ".np_strip_suffix"       ".np_to_state_abb"      </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [52] ".np_tokenize"           ".np_tokens"             ".np_unit_designators"  </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [55] ".np_unit_id"            ".np_unit_id_strip"      ".np_unit_pat"          </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [58] ".np_unit_rank"          "np_addr_freq"           "np_mail_freq"          </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [61] "np_name_core"           "np_name_freq"           "np_name_placeholder"   </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [64] "np_normalize"           "np_stopwords"           "np_token_idf"          </span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

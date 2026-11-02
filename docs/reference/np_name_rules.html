@@ -13,7 +13,7 @@ np_normalize_signature()."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">npnormalize</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.6</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.7</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -63,8 +63,11 @@ against <code><a href="np_name_core.html">np_name_core()</a></code> on test stri
 <code>core_stop</code> (tokens dropped from <code>name_core</code>), <code>legal_suffixes</code>
 (trailing tokens stripped from <code>name_key</code>), <code>special_letters</code> (named
 character, a non-decomposable Latin letter to its ASCII spelling, folded
-before de-accenting), <code>placeholder_re</code> (a Perl regex on the raw
-upper-cased name) and <code>placeholder_tok</code>.</p>
+before de-accenting), <code>split_words</code> (named character, a word broken across
+two tokens to the whole word, applied <em>before</em> <code>abbrev</code> because a port that
+applied it after would turn <code>FOUNDATIO N</code> into <code>FOUNDATION N</code>),
+<code>placeholder_re</code> (a Perl regex on the raw upper-cased name) and
+<code>placeholder_tok</code>.</p>
     </div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

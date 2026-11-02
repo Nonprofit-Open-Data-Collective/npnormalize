@@ -11,8 +11,11 @@ A list: \code{abbrev} (named character, token to expansion),
 \code{core_stop} (tokens dropped from \code{name_core}), \code{legal_suffixes}
 (trailing tokens stripped from \code{name_key}), \code{special_letters} (named
 character, a non-decomposable Latin letter to its ASCII spelling, folded
-before de-accenting), \code{placeholder_re} (a Perl regex on the raw
-upper-cased name) and \code{placeholder_tok}.
+before de-accenting), \code{split_words} (named character, a word broken across
+two tokens to the whole word, applied \emph{before} \code{abbrev} because a port that
+applied it after would turn \verb{FOUNDATIO N} into \verb{FOUNDATION N}),
+\code{placeholder_re} (a Perl regex on the raw upper-cased name) and
+\code{placeholder_tok}.
 }
 \description{
 The tables \code{\link[=np_normalize]{np_normalize()}} uses, for packages that need the same rules in

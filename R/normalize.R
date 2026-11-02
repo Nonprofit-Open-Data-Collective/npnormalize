@@ -27,7 +27,25 @@
   "FDTN" = "FOUNDATION", "HOSP" = "HOSPITAL", "MED" = "MEDICAL",
   "HLTH" = "HEALTH", "HLTHCARE" = "HEALTHCARE", "MGMT" = "MANAGEMENT",
   "REG" = "REGIONAL", "RGNL" = "REGIONAL", "CNTR" = "CENTER",
-  "SYS" = "SYSTEM", "SYST" = "SYSTEM", "SRVCS" = "SERVICES", "SRVS" = "SERVICES"
+  "SYS" = "SYSTEM", "SYST" = "SYSTEM", "SRVCS" = "SERVICES", "SRVS" = "SERVICES",
+  # FOUNDATION again. 0.1.6 already folded FDN/FND/FNDTN/FDTN; these are the
+  # remaining spellings in the unified BMF -- 1,505 rows and 1,182 EINs once the
+  # split forms in .np_split_words are counted with them. None is an English
+  # word, so they fold wherever they appear, like every other entry here.
+  #
+  # FOUND is deliberately NOT in this table, for the same reason PHYS is not.
+  # It IS an English word. Of the 197 BMF rows whose name ENDS in FOUND, the
+  # names that would gain a blocking partner are mostly not truncations at all
+  # -- LOST AND FOUND, PRO FOUND, BE FOUND, HOPE FOUND, FOREVER FOUND -- and
+  # folding them mis-blocks those for the sake of roughly ten genuine cases
+  # (AMERICAN UNIVERSITY OF PARIS FOUND, UNIVERSITY OF TOLEDO ALUMNI FOUND).
+  # Position does not separate the two readings either: ANGEL FOUND FOR ANIMALS
+  # is the word mid-name, ASSOC FOUND OF ROCHESTER NY the abbreviation mid-name.
+  "FOUNDATIO" = "FOUNDATION", "FOUNDATI" = "FOUNDATION",
+  "FOUNDATON" = "FOUNDATION", "FOUNDATN" = "FOUNDATION",
+  "FOUNDTN" = "FOUNDATION", "FOUNDATOIN" = "FOUNDATION",
+  "FOUNDAITON" = "FOUNDATION", "FOUNDATIION" = "FOUNDATION",
+  "FOUDATION" = "FOUNDATION", "FOUNATION" = "FOUNDATION"
 )
 
 # Tokens dropped anywhere in `name_core`: connector words and legal forms.
@@ -147,6 +165,30 @@
 )
 
 .np_tokens <- function(x) strsplit(x, "\\s+")
+
+# One word broken across two tokens by a fixed-width line break in the source
+# filing: 437 rows of the unified BMF carry FOUNDATION this way. A whole-word
+# table cannot reach them -- .np_replace_tokens() sees two tokens and has an
+# entry for neither -- so they are rejoined BEFORE it runs, which also puts the
+# rejoined word in front of the FOUNDATIO / FOUNDATI entries in .np_abbrev
+# rather than behind them ("FOUNDATIO N" must not become "FOUNDATION N").
+#
+# A table rather than one regex, so np_name_rules() can publish it for a port
+# and the next spelling is one line.
+.np_split_words <- c(
+  "FOUND ATION" = "FOUNDATION",
+  "FOUNDATIO N" = "FOUNDATION",
+  "FOUNDATI ON" = "FOUNDATION"
+)
+
+.np_fold_split <- function(x) {
+  x <- as.character(x); x[is.na(x)] <- ""
+  for (i in seq_along(.np_split_words)) {
+    x <- gsub(paste0("\\b", names(.np_split_words)[i], "\\b"),
+              .np_split_words[[i]], x)
+  }
+  x
+}
 
 .np_replace_tokens <- function(x, dict) {
   # A missing value is an empty string, not the token "NA": paste() would turn
@@ -290,8 +332,7 @@
 #' @return The same frame with the normalization columns added.
 #' @export
 np_normalize <- function(data) {
-  nm  <- .np_basic_clean(data$name)
-  nm  <- .np_replace_tokens(nm, .np_abbrev)
+  nm  <- .np_clean_name(data$name)
 
   data$name_gen      <- .np_extract_generation(nm)
   data$name_gen_rank <- unname(.np_gen_rank[data$name_gen])
@@ -310,16 +351,14 @@ np_normalize <- function(data) {
 
   # DBA key: same normalization as the name, for exact DBA cross-matching.
   dv <- data$dba; dv[is.na(dv)] <- ""
-  data$dba_key <- .np_strip_lead_the(
-    .np_strip_suffix(.np_replace_tokens(.np_basic_clean(dv), .np_abbrev)))
+  data$dba_key <- .np_strip_lead_the(.np_strip_suffix(.np_clean_name(dv)))
 
   # Division key: a second alternate-name field (SAM's entity_division_name),
   # normalized like the DBA so it can be cross-matched independently.
   dv2 <- if (!is.null(data$division)) as.character(data$division) else
     rep(NA_character_, nrow(data))
   dv2[is.na(dv2)] <- ""
-  data$division_key <- .np_strip_lead_the(
-    .np_strip_suffix(.np_replace_tokens(.np_basic_clean(dv2), .np_abbrev)))
+  data$division_key <- .np_strip_lead_the(.np_strip_suffix(.np_clean_name(dv2)))
 
   data$street_unit <- .np_extract_unit(data$street, data$unit)
   data$street_unit_id <- .np_unit_id(data$street_unit)
@@ -405,8 +444,17 @@ np_name_core <- function(x) {
 #' @export
 np_name_placeholder <- function(x) .np_is_placeholder(x, .np_clean_name(x))
 
-# The shared first stage of every name key: clean, then expand abbreviations.
-.np_clean_name <- function(x) .np_replace_tokens(.np_basic_clean(x), .np_abbrev)
+# The shared first stage of every name key: clean, rejoin a word a line break
+# split, then expand abbreviations.
+#
+# np_normalize() and the dba / division keys used to inline these steps, so the
+# sequence existed in four places and this helper was only reached by
+# np_name_core() and np_name_placeholder(). Adding .np_fold_split() to four
+# copies is exactly the hand-copy problem the box vocabulary had, so the call
+# sites now go through here instead.
+.np_clean_name <- function(x) {
+  .np_replace_tokens(.np_fold_split(.np_basic_clean(x)), .np_abbrev)
+}
 
 #' Name-normalization rule tables
 #'
@@ -419,13 +467,17 @@ np_name_placeholder <- function(x) .np_is_placeholder(x, .np_clean_name(x))
 #'   `core_stop` (tokens dropped from `name_core`), `legal_suffixes`
 #'   (trailing tokens stripped from `name_key`), `special_letters` (named
 #'   character, a non-decomposable Latin letter to its ASCII spelling, folded
-#'   before de-accenting), `placeholder_re` (a Perl regex on the raw
-#'   upper-cased name) and `placeholder_tok`.
+#'   before de-accenting), `split_words` (named character, a word broken across
+#'   two tokens to the whole word, applied *before* `abbrev` because a port that
+#'   applied it after would turn `FOUNDATIO N` into `FOUNDATION N`),
+#'   `placeholder_re` (a Perl regex on the raw upper-cased name) and
+#'   `placeholder_tok`.
 #' @export
 np_name_rules <- function() {
   list(abbrev = .np_abbrev, core_stop = .np_core_stop,
        legal_suffixes = .np_legal_suffixes,
        special_letters = .np_special_letters,
+       split_words = .np_split_words,
        placeholder_re = .np_placeholder_re, placeholder_tok = .np_placeholder_tok)
 }
 
@@ -838,6 +890,40 @@ np_name_rules <- function() {
   ifelse(is.na(v) | !nzchar(id), NA_character_, id)
 }
 
+# A hyphen inside a LEADING house number is structural, not a separator, and it
+# has to be closed up here because .np_basic_clean() turns every mark into a
+# space -- which split one house number into two tokens and cost three columns
+# at once (#16): "70-11 150TH STREET" keyed as "70 11 150TH ST" while
+# "7011 150TH STREET", the same Queens door, keyed as "7011 150TH ST", so the
+# two filed spellings never blocked together; street_num was truncated to "70";
+# and street_name absorbed the remainder as "11 150TH", which is wrong rather
+# than merely short. 6,459 BMF rows (0.166%) carry such a number, and 410
+# address groups hold both spellings of one address.
+#
+# Three regional conventions, not a typo class: Queens block-and-house numbers
+# ("70-11" is block 70, house 11), Hawaii ("73-4460 QUEEN KAAHUMANU HWY"), and
+# Chicago-style ranges ("5830-5832 W LAWRENCE AVE"). Closing up rather than
+# keeping the hyphen is what makes the two spellings one key, which is what a
+# street key is for; a range becomes a fused "58305832", no better a house
+# number than today's "5830" but no worse, while its street_name is fixed.
+#
+# ANCHORED on purpose. A hyphen elsewhere is left alone, so "HC 81 BOX 363-5"
+# and "PO BOX 363-5" keep theirs, and the part after the hyphen is restricted to
+# digits or a single letter so "123-MAIN ST" cannot be glued into one token.
+#
+# Doing it in each consumer was measured and rejected: keying on
+# gsub(" ", "", street_key) adds 2,278 merges over the same reference of which
+# 972 (42.67%) join rows whose street_num disagrees -- "4780 1 55 N" with
+# "47801 55 N" -- and only 410 are this case.
+.np_hyphen_house <- "^ *[0-9]+(?: *- *(?:[0-9]+[A-Z]?|[A-Z]))+(?= |$)"
+
+.np_join_house_number <- function(x) {
+  m  <- stringr::str_extract(x, .np_hyphen_house)
+  ok <- !is.na(m)
+  x[ok] <- paste0(gsub("[ -]", "", m[ok]), substring(x[ok], nchar(m[ok]) + 1L))
+  x
+}
+
 .np_street_key <- function(street) {
   # The unit comes out BEFORE cleaning, with the pattern that extracts it: "#"
   # only exists at this point (.np_basic_clean() turns it into a space), which
@@ -845,6 +931,9 @@ np_name_rules <- function() {
   # "123 MAIN ST 300".
   s <- toupper(as.character(street))
   s <- gsub(.np_unit_pat, " ", s, perl = TRUE)
+  # After the unit strip, so a "#" the unit pattern owns is already gone, and
+  # before the clean, which is the step that would turn the hyphen into a space.
+  s <- .np_join_house_number(s)
   s <- .np_basic_clean(s)
   s <- .np_replace_tokens(s, .np_street_types)
   stringr::str_squish(s)
@@ -1161,6 +1250,13 @@ np_token_idf <- function(name_keys, stopwords = np_stopwords(), min_token_len = 
   # KERRY CT") are one house number, which the old rule cut to "16W".
   # A number run into the street name ("921AIRPORT SERVICE RD", which gave
   # "921A") is the digits alone, unless they could begin an ordinal.
+  #
+  # The "-[0-9]+" branch below cannot fire on a key this package built: a
+  # hyphenated house number is closed up by .np_join_house_number() and every
+  # other mark is a space by the time .np_basic_clean() is done, so a street_key
+  # holds no hyphen at all. It is kept for a caller that hands this function a
+  # raw street rather than a key, where it reads the number instead of cutting
+  # it at the hyphen.
   num  <- "^[0-9]+([NSEW][0-9]+)?[A-Z]?(-[0-9]+[A-Z]?)?(?= |$)"
   glue <- "^[0-9]+(?=[A-Z]{2})(?!(ST|ND|RD|TH))"
   lead <- stringr::str_extract(sk, num)

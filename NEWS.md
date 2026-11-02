@@ -1,3 +1,117 @@
+# npnormalize 0.1.7
+
+Two spelling problems, one on each side of the frame, both of them a case where
+the normalizer split one thing into two keys. Neither was a typo class: a
+hyphenated house number is how whole jurisdictions write an address, and a word
+broken across two tokens is a fixed-width line break in the filing.
+
+## A hyphen in a house number is closed up rather than spaced (#16)
+
+`.np_basic_clean()` turns every mark into a space, which is right for a name and
+wrong for a house number. `70-11 150TH STREET` keyed as `70 11 150TH ST` while
+`7011 150TH STREET` — the same Queens door, filed the other way — keyed as
+`7011 150TH ST`, so the two never blocked together and `np_addr_key()` put them
+in different groups. It cost two more columns on the way: `street_num` was
+truncated to `70`, and `street_name` absorbed the remainder as `11 150TH`, which
+is wrong rather than merely short.
+
+`.np_join_house_number()` closes the hyphen up before the clean runs, so all
+three columns are right at once:
+
+| street | `street_key` | `street_num` | `street_name` |
+|---|---|---|---|
+| `70-11 150TH STREET` | `7011 150TH ST` | `7011` | `150TH` |
+| `7011 150TH STREET` | `7011 150TH ST` | `7011` | `150TH` |
+| `73-4460 QUEEN KAAHUMANU HWY` | `734460 QUEEN KAAHUMANU HWY` | `734460` | `QUEEN KAAHUMANU` |
+| `123-A MAIN ST` | `123A MAIN ST` | `123A` | `MAIN` |
+
+Three conventions, not three mistakes: Queens block-and-house numbers (`70-11`
+is block 70, house 11), Hawaii's prefix numbers, and Chicago-style ranges. Over
+the 3,687,435-row unified BMF, **6,642 rows (0.180%)** carry such a number and
+every one of their keys moves. Counting address groups that hold both spellings
+of one address (`street_key` + `zip5`), **87 before and 293 after** — 206 groups
+that were two.
+
+Closing the hyphen up, rather than keeping it, is the choice that makes the two
+filed spellings one key, which is what a street key is for. A Chicago range
+fuses as a side effect (`5830-5832` becomes `58305832`), which is no better a
+house number than the `5830` it used to truncate to but no worse, and its
+`street_name` is now right. There is a test asserting that, so it reads as a
+decision rather than a surprise.
+
+**The join is anchored and narrow on purpose.** Only a leading house number is
+joined, so `HC 81 BOX 363-5` and `PO BOX 363-5` keep their separator and the box
+vocabulary is untouched; and the part after the hyphen must be digits or a single
+letter, so `123-MAIN ST` cannot be glued into one token. It runs after the unit
+strip, which means a hyphenated number behind a unit is still found —
+`PMB 125 3434-135 KILDAIRE FARM RD` joins once `PMB 125` is gone — and a chain
+joins whole, so `38-39-205 ST` gives `3839205 ST`.
+
+Fixing it here rather than in each consumer was #16's own measurement: keying on
+`gsub(" ", "", street_key)` adds 2,278 merges over a comparable reference, of
+which 972 (42.67%) join rows whose `street_num` disagrees — `4780 1 55 N` with
+`47801 55 N` — while only 410 are this case.
+
+## Eleven more spellings of FOUNDATION, and the one that stays (#17)
+
+0.1.6 folded `FDN`, `FND`, `FNDTN` and `FDTN`. `.np_abbrev` now also takes
+`FOUNDATIO`, `FOUNDATI`, `FOUNDATON`, `FOUNDATN`, `FOUNDTN`, `FOUNDATOIN`,
+`FOUNDAITON`, `FOUNDATIION`, `FOUDATION` and `FOUNATION`, and the new
+`.np_split_words` rejoins the three forms where a line break fell inside the
+word — `FOUND ATION`, `FOUNDATIO N`, `FOUNDATI ON`. **1,182 EINs**, every one of
+whose `name_key` moves, and `name_form` now reports `FOUNDATION` for them
+instead of nothing.
+
+The rejoin runs **before** the abbreviation table, and the order is
+load-bearing: run `.np_abbrev` first and `FOUNDATIO N` becomes
+`FOUNDATION N`, a key no correctly spelled row has. `np_name_rules()` gains a
+`split_words` element so a port in another engine gets both tables and the
+ordering is stated where a porter will read it.
+
+`ROCKY MOUNTAIN ELK FOUNATION` now keys to `ROCKY MOUNTAIN ELK`, which 747
+other EINs already share. That is the intended behaviour and not a false merge:
+`FOUNDATION` is stripped from `name_key` for the correctly spelled siblings
+too, `name_key` is a blocking key rather than an identity, and `name_core` is
+the column that keeps the word. The defect was that these rows sat outside a
+block their own siblings were in.
+
+**`FOUND` is deliberately not folded**, for the reason `PHYS` is not. It is an
+English word. Of the BMF rows whose name ends in `FOUND`, the ones that would
+gain a blocking partner are mostly not truncations — `LOST AND FOUND`,
+`PRO FOUND`, `BE FOUND`, `HOPE FOUND`, `FOREVER FOUND` — and folding them
+mis-blocks a thrift shop, a ministry and a theatre for the sake of roughly ten
+genuine cases such as `AMERICAN UNIVERSITY OF PARIS FOUND`. Position does not
+separate the two readings either: `ANGEL FOUND FOR ANIMALS` is the word
+mid-name and `ASSOC FOUND OF ROCHESTER NY` the abbreviation mid-name. The
+decision is recorded in a test and in the comment beside the table, so the next
+reader does not add it blind.
+
+## One hand-copy closed on the way
+
+`np_normalize()` and the `dba_key` / `division_key` lines each inlined
+`.np_replace_tokens(.np_basic_clean(x), .np_abbrev)`, so the sequence existed in
+four places and `.np_clean_name()` — which exists to be that sequence — was
+reached only by `np_name_core()` and `np_name_placeholder()`. Adding the rejoin
+to four copies is the same hand-copy problem the box vocabulary had, so the call
+sites go through `.np_clean_name()` now. No behaviour change of its own.
+
+## The signature
+
+This moves `np_normalize_signature()` to `v1-59c6e84c5f38e9f5`. `street_key`,
+`street_num`, `street_name`, `name_key`, `name_full`, `name_form`, `dba_key` and
+`division_key` can all change, so stored keys and every statistic built on them
+must be rebuilt — matchdb's derived tables, bundles and tranches, and
+`pfmatch::pf_variants`.
+
+Measured against 0.1.6 on a fixed 400,000-row sample, with both versions run
+over the same rows rather than against the stored columns: **734 street keys and
+131 name keys move, and every one of them is one of these two fixes.** On the
+399,140 rows neither fix touches, `name_full`, `name_form`, `street_num` and
+`street_name` are identical. The handful of moved rows that fell outside the
+crude detection patterns used for that check were all the fixes working on
+inputs the patterns did not anticipate — a hyphen chain, a hyphenated number
+behind a unit, and `FOUND- ATION`.
+
 # npnormalize 0.1.6
 
 The policy question behind #13, answered family by family, and the signal a

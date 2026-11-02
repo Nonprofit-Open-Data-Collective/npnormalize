@@ -107,7 +107,7 @@ distinguishable from a change to the normalizer itself.
 ``` r
 sig <- np_normalize_signature()
 sig
-#> [1] "v1-d49b18cc81ab79fb"
+#> [1] "v1-59c6e84c5f38e9f5"
 
 # which components make it up
 names(np_normalize_signature(detail = TRUE)$components)
@@ -116,22 +116,23 @@ names(np_normalize_signature(detail = TRUE)$components)
 #>  [7] ".np_canon_form"         ".np_clean_name"         ".np_core_stop"         
 #> [10] ".np_directions"         ".np_doc_freq"           ".np_extract_direction" 
 #> [13] ".np_extract_form"       ".np_extract_generation" ".np_extract_numbers"   
-#> [16] ".np_extract_ordinals"   ".np_extract_unit"       ".np_gen_rank"          
-#> [19] ".np_generation"         ".np_has_box"            ".np_is_mailonly"       
-#> [22] ".np_is_placeholder"     ".np_is_pobox"           ".np_legal_suffixes"    
-#> [25] ".np_mail_key"           ".np_mailonly_pat"       ".np_map_special"       
-#> [28] ".np_name_core"          ".np_norm_unit"          ".np_ordinals"          
-#> [31] ".np_parse_street"       ".np_parse_zip"          ".np_pick_unit"         
-#> [34] ".np_placeholder_re"     ".np_placeholder_tok"    ".np_pobox_pat"         
-#> [37] ".np_replace_tokens"     ".np_special_letters"    ".np_state_abbr"        
-#> [40] ".np_state_codes"        ".np_street_key"         ".np_street_type_set"   
-#> [43] ".np_street_types"       ".np_strip_joiners"      ".np_strip_lead_the"    
-#> [46] ".np_strip_suffix"       ".np_to_state_abb"       ".np_tokenize"          
-#> [49] ".np_tokens"             ".np_unit_designators"   ".np_unit_id"           
-#> [52] ".np_unit_id_strip"      ".np_unit_pat"           ".np_unit_rank"         
-#> [55] "np_addr_freq"           "np_mail_freq"           "np_name_core"          
-#> [58] "np_name_freq"           "np_name_placeholder"    "np_normalize"          
-#> [61] "np_stopwords"           "np_token_idf"          
+#> [16] ".np_extract_ordinals"   ".np_extract_unit"       ".np_fold_split"        
+#> [19] ".np_gen_rank"           ".np_generation"         ".np_has_box"           
+#> [22] ".np_hyphen_house"       ".np_is_mailonly"        ".np_is_placeholder"    
+#> [25] ".np_is_pobox"           ".np_join_house_number"  ".np_legal_suffixes"    
+#> [28] ".np_mail_key"           ".np_mailonly_pat"       ".np_map_special"       
+#> [31] ".np_name_core"          ".np_norm_unit"          ".np_ordinals"          
+#> [34] ".np_parse_street"       ".np_parse_zip"          ".np_pick_unit"         
+#> [37] ".np_placeholder_re"     ".np_placeholder_tok"    ".np_pobox_pat"         
+#> [40] ".np_replace_tokens"     ".np_special_letters"    ".np_split_words"       
+#> [43] ".np_state_abbr"         ".np_state_codes"        ".np_street_key"        
+#> [46] ".np_street_type_set"    ".np_street_types"       ".np_strip_joiners"     
+#> [49] ".np_strip_lead_the"     ".np_strip_suffix"       ".np_to_state_abb"      
+#> [52] ".np_tokenize"           ".np_tokens"             ".np_unit_designators"  
+#> [55] ".np_unit_id"            ".np_unit_id_strip"      ".np_unit_pat"          
+#> [58] ".np_unit_rank"          "np_addr_freq"           "np_mail_freq"          
+#> [61] "np_name_core"           "np_name_freq"           "np_name_placeholder"   
+#> [64] "np_normalize"           "np_stopwords"           "np_token_idf"          
 ```
 
 </div>
