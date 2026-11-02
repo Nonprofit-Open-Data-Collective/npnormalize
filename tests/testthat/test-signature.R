@@ -80,18 +80,22 @@ test_that("the signature history dates the installed signature (#20)", {
   full <- np_signature_history()
   expect_false(any(duplicated(full$signature)))
   expect_true(all(grepl("^v1-[0-9a-f]{16}$", full$signature)))
-  # every npnormalize row carries a version; the npmatch ones carry none,
-  # because it was never recorded -- undated, not guessed
-  np <- full[full$package == "npnormalize", ]
-  expect_false(any(is.na(np$version)))
-  expect_true(all(is.na(full$version[full$package == "npmatch"])))
+  # every npnormalize row carries a version: this package computed those values
+  expect_false(any(is.na(full$version[full$package == "npnormalize"])))
 
   # a pre-split value is LISTED, so a caller can tell "not an npnormalize
-  # signature" from "a signature I do not have a row for"
+  # signature" from "a signature I do not have a row for". Two of the three
+  # were dated from a consumer's run-time record naming the npmatch commit.
   pre <- np_signature_history("v1-421e1e2a6afb024e")
   expect_equal(nrow(pre), 1L)
   expect_identical(pre$package, "npmatch")
-  expect_true(is.na(pre$version))
+  expect_identical(pre$version, "0.0.0.9000")
+  expect_match(pre$summary, "f14f1d9", fixed = TRUE)
+
+  # and the one with no commit recorded anywhere stays undated rather than
+  # being inferred from the releases either side of it
+  expect_true(is.na(np_signature_history("v1-b42811fe6601afe6")$version))
+
   expect_equal(nrow(np_signature_history("v1-0000000000000000")), 0L)
 })
 

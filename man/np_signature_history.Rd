@@ -28,8 +28,17 @@ signature instead of a person looking it up in \code{NEWS.md}.
 \details{
 The three oldest rows are npmatch's, from before the normalizer moved into
 this package. They are listed so that an unrecognized value can be told from
-a recognized pre-split one; their npmatch version was never recorded, so
-\code{version} is \code{NA} and \code{summary} says where the value is cited.
+a recognized pre-split one.
+
+\strong{Those rows are weaker evidence than the rest, and knowingly so.} An
+npnormalize row is authoritative: this package computed the value, and a
+test asserts the installed signature appears in the table under the
+installed release. An npmatch row is \emph{reported} — read out of a consumer's
+run-time record that happened to log the signature beside the commit, and
+not reproduced here, because doing that would mean installing a pre-split
+npmatch. \code{summary} names the record in each case so the reader can judge it.
+One of the three has no commit recorded anywhere, so its \code{version} stays
+\code{NA}: undated, rather than inferred from its neighbours.
 }
 \section{A signature does not determine a release}{
 A release that changes no rule reports its predecessor's value: 0.1.0 and

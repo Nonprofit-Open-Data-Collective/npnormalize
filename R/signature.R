@@ -136,12 +136,12 @@
     "v1-59c6e84c5f38e9f5", "v1-5e901add4a04a5d6"),
   package = c(rep("npmatch", 3L), rep("npnormalize", 8L)),
   version = c(
-    NA_character_, NA_character_, NA_character_,
+    "0.0.0.9000", "0.1.0.9000", NA_character_,
     "0.1.0", "0.1.2", "0.1.3", "0.1.4", "0.1.5", "0.1.6", "0.1.7", "0.1.8"),
   summary = c(
-    "before the split; cited in pfmatch dev/BASELINE-2026-08 and matchdb dev/GROUP-STRUCTURE-FINDINGS.md, measured 2026-08-22",
-    "before the split; cited in pfmatch R/pipeline.R and dev/BENCH-MD-REFERENCE.log as npmatch@ddfd967, measured 2026-10-23",
-    "before the split; cited in matchdb dev/verify/build-baseline-2026-10.R",
+    "before the split; npmatch@f14f1d9, recorded beside this value in pfmatch dev/BASELINE-2026-08/environment.txt, measured 2026-08-22 (the commit's own date); reported, not reproduced here",
+    "before the split; npmatch@ddfd967, recorded beside this value in pfmatch dev/BENCH-MD-REFERENCE.log, measured 2026-10-23 (the commit's own date); reported, not reproduced here",
+    "before the split; cited in matchdb dev/verify/build-baseline-2026-10.R as npmatch's value after v1-421e1e2a6afb024e, with no commit recorded anywhere I can find -- undated on purpose",
     "the value npmatch gave before the move; unchanged by it, and 0.1.1 reports it too",
     "BUILDING became a unit designator (#7)",
     "a line naming several units keeps the most specific one, and the house number is a whole token",
@@ -163,8 +163,17 @@
 #'
 #' The three oldest rows are npmatch's, from before the normalizer moved into
 #' this package. They are listed so that an unrecognized value can be told from
-#' a recognized pre-split one; their npmatch version was never recorded, so
-#' `version` is `NA` and `summary` says where the value is cited.
+#' a recognized pre-split one.
+#'
+#' **Those rows are weaker evidence than the rest, and knowingly so.** An
+#' npnormalize row is authoritative: this package computed the value, and a
+#' test asserts the installed signature appears in the table under the
+#' installed release. An npmatch row is *reported* — read out of a consumer's
+#' run-time record that happened to log the signature beside the commit, and
+#' not reproduced here, because doing that would mean installing a pre-split
+#' npmatch. `summary` names the record in each case so the reader can judge it.
+#' One of the three has no commit recorded anywhere, so its `version` stays
+#' `NA`: undated, rather than inferred from its neighbours.
 #'
 #' # A signature does not determine a release
 #'
