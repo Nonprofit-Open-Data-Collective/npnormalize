@@ -52,7 +52,7 @@ blocking.
 <div class="section-desc">
 
 Fingerprint the normalizer so stored keys can refuse to load under a
-different one.
+different one, and date a fingerprint you have been handed.
 
 </div>
 
@@ -61,6 +61,8 @@ different one.
 <div class="section level2">
 
 -   `np_normalize_signature()` : Fingerprint the normalizer
+-   `np_signature_history()` : Which release produced a normalizer
+    signature
 
 </div>
 

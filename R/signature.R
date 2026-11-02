@@ -110,6 +110,104 @@
   }
 }
 
+# Every signature this package has published, and the one npmatch published
+# before the normalizer moved out of it. The history was prose -- a comment
+# beside the pin in tests/testthat/test-signature.R -- which a person can read
+# and a script cannot. Consumers stamp provenance headers from
+# packageVersion(), which dates the CURRENT signature and is no help for a
+# historical one: matchdb and pfmatch each had to date v1-59c6e84c5f38e9f5 by
+# hand, from NEWS, which is an inference in a provenance header.
+#
+# Not called a registry: .np_signature_registry() already means the list of
+# objects that get hashed, and two things called a registry in one file would
+# be worse than a longer name.
+#
+# The pre-split rows are here ON PURPOSE rather than omitted. A table that
+# returned nothing for them would leave a caller unable to tell "not an
+# npnormalize signature" from "npnormalize signature I have not recorded", and
+# the first is a fact worth stating. Their npmatch version was never written
+# down anywhere I can find, so `version` is NA and `summary` says where the
+# value is cited -- undated, not guessed.
+.np_signature_log <- data.frame(
+  signature = c(
+    "v1-421e1e2a6afb024e", "v1-6dcb298522cc5118", "v1-b42811fe6601afe6",
+    "v1-3e7b9f9d59bbb19e", "v1-6d90b52d8b781673", "v1-592912060053c4c3",
+    "v1-1179714ce1e9d31f", "v1-533f186c123357cf", "v1-d49b18cc81ab79fb",
+    "v1-59c6e84c5f38e9f5", "v1-5e901add4a04a5d6"),
+  package = c(rep("npmatch", 3L), rep("npnormalize", 8L)),
+  version = c(
+    "0.0.0.9000", "0.1.0.9000", NA_character_,
+    "0.1.0", "0.1.2", "0.1.3", "0.1.4", "0.1.5", "0.1.6", "0.1.7", "0.1.8"),
+  summary = c(
+    "before the split; npmatch@f14f1d9, recorded beside this value in pfmatch dev/BASELINE-2026-08/environment.txt, measured 2026-08-22 (the commit's own date); reported, not reproduced here",
+    "before the split; npmatch@ddfd967, recorded beside this value in pfmatch dev/BENCH-MD-REFERENCE.log, measured 2026-10-23 (the commit's own date); reported, not reproduced here",
+    "before the split; cited in matchdb dev/verify/build-baseline-2026-10.R as npmatch's value after v1-421e1e2a6afb024e, with no commit recorded anywhere I can find -- undated on purpose",
+    "the value npmatch gave before the move; unchanged by it, and 0.1.1 reports it too",
+    "BUILDING became a unit designator (#7)",
+    "a line naming several units keeps the most specific one, and the house number is a whole token",
+    "street_has_box added and the box gate anchored (#9)",
+    "a lettered box is a box, and one helper reads the box identifier (#12)",
+    "the long-tail box spellings, is_mail_only and mail_key (#13)",
+    "a hyphenated house number is joined, and eleven FOUNDATION spellings fold (#16, #17)",
+    "the join stops closing up a lone compass letter (#16); 0.1.9 reports it too, having changed no rule"),
+  stringsAsFactors = FALSE
+)
+
+#' Which release produced a normalizer signature
+#'
+#' [np_normalize_signature()] returns an opaque value, which is what makes it a
+#' good fingerprint and a poor label: it says *that* two artifacts disagree,
+#' never which is newer. This dates every signature the package has published,
+#' so a script writing a provenance header can stamp the release beside the
+#' signature instead of a person looking it up in `NEWS.md`.
+#'
+#' The three oldest rows are npmatch's, from before the normalizer moved into
+#' this package. They are listed so that an unrecognized value can be told from
+#' a recognized pre-split one.
+#'
+#' **Those rows are weaker evidence than the rest, and knowingly so.** An
+#' npnormalize row is authoritative: this package computed the value, and a
+#' test asserts the installed signature appears in the table under the
+#' installed release. An npmatch row is *reported* — read out of a consumer's
+#' run-time record that happened to log the signature beside the commit, and
+#' not reproduced here, because doing that would mean installing a pre-split
+#' npmatch. `summary` names the record in each case so the reader can judge it.
+#' One of the three has no commit recorded anywhere, so its `version` stays
+#' `NA`: undated, rather than inferred from its neighbours.
+#'
+#' # A signature does not determine a release
+#'
+#' A release that changes no rule reports its predecessor's value: 0.1.0 and
+#' 0.1.1 both report `v1-3e7b9f9d59bbb19e`. So this answers *which release
+#' produced this value* — meaning the earliest that could have — and not *which
+#' release is installed*. A stamped artifact wants **both**: the signature, so a
+#' reader can tell whether its keys are comparable with theirs, and
+#' [utils::packageVersion()] at build time, so they can tell what was running.
+#' Neither determines the other, and a header carrying only one of them invites
+#' the reader to infer the other.
+#'
+#' @param signature Optionally one or more signature strings to look up. A
+#'   value that is not listed returns no rows — it is not an error, and it is
+#'   not the same as a listed row with an `NA` version.
+#' @return A data frame of `signature`, `package`, `version` and `summary`, in
+#'   publication order. `version` is the release that *introduced* the
+#'   signature; a later release that reports the same value unchanged is named
+#'   in `summary` rather than given a row of its own, so one signature is one
+#'   row and the column stays usable for comparison.
+#' @seealso [np_normalize_signature()]
+#' @examples
+#' np_signature_history(np_normalize_signature())
+#'
+#' # the whole history, oldest first
+#' np_signature_history()[, c("signature", "package", "version")]
+#' @export
+np_signature_history <- function(signature = NULL) {
+  out <- .np_signature_log
+  if (!is.null(signature)) out <- out[out$signature %in% signature, , drop = FALSE]
+  rownames(out) <- NULL
+  out
+}
+
 #' Fingerprint the normalizer
 #'
 #' A hash over everything a caller may legitimately **precompute and cache**: the

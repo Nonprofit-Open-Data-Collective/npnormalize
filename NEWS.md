@@ -1,3 +1,53 @@
+# npnormalize 0.1.9
+
+**The signature does not move.** `np_normalize_signature()` still reports
+`v1-5e901add4a04a5d6`, so nothing cached under 0.1.8 needs rebuilding. This
+release adds one function.
+
+## `np_signature_history()` dates a signature
+
+A signature is opaque by design — that is what makes it a good fingerprint and
+a poor label. Until now the record of which release produced which value was
+prose: a comment beside the pin in `tests/testthat/test-signature.R`, which a
+person can read and a script cannot.
+
+That cost something real. Consumers stamp provenance headers from
+`packageVersion()`, which dates the *current* signature and is no help for a
+historical one, so matchdb and pfmatch each dated `v1-59c6e84c5f38e9f5` by hand
+out of `NEWS.md` — an inference sitting in a header that is supposed to carry a
+record.
+
+```r
+np_signature_history(np_normalize_signature())
+#>             signature     package version                              summary
+#> 1 v1-5e901add4a04a5d6 npnormalize   0.1.8 the join stops closing up a lone ...
+```
+
+`version` is the release that *introduced* the signature, so one signature is
+one row and the column stays comparable; a later release reporting the same
+value unchanged is named in `summary` instead of getting a row of its own,
+which is the case for 0.1.1 and for this release.
+
+**The three oldest rows are npmatch's**, from before the normalizer moved into
+this package. They are listed rather than omitted so that an unrecognized value
+can be told from a recognized pre-split one — `np_signature_history()` on an
+unknown signature returns no rows, which is a different answer from a listed
+row whose `version` is `NA`. Their npmatch version was never written down
+anywhere findable, so `version` is `NA` and `summary` says where the value is
+cited: `v1-421e1e2a6afb024e` in pfmatch's `dev/BASELINE-2026-08` and matchdb's
+`dev/GROUP-STRUCTURE-FINDINGS.md`, `v1-6dcb298522cc5118` as `npmatch@ddfd967`,
+`v1-b42811fe6601afe6` in matchdb's `dev/verify/build-baseline-2026-10.R`.
+Undated, not guessed.
+
+A test asserts the installed signature appears in the table with a version at
+or behind the installed one, so adding a release without adding its row fails
+rather than drifting. It uses `utils::compareVersion()` rather than a string
+comparison, because `"0.1.10"` sorts before `"0.1.8"` lexically and would fail
+a correct install on the first double-digit patch — a trap pointed out by a
+pfmatch reviewer who had just hit it in their own normalizer gate.
+
+Asked for by matchdb and pfmatch, which both needed to write the version beside
+the signature without a human looking it up.
 # npnormalize 0.1.8
 
 One correction to 0.1.7, found by measuring what 0.1.7's house-number join did
