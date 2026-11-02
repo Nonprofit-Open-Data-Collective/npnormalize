@@ -569,6 +569,29 @@ test_that("the house-number join is anchored and narrow (#16)", {
   expect_equal(k$street_unit[3], "# 300")
 })
 
+test_that("street_num is the whole number on the hyphenated spelling only (#16)", {
+  # Pinned because NEWS once told consumers that street_num was "the whole
+  # number on both spellings" and offered it as the way round the splits the
+  # join leaves. It is not, and keying on it reproduces the split rather than
+  # closing it -- a pfmatch reviewer found that by probing the suggestion. The
+  # asymmetry is deliberate (joining the spaced spelling fuses street names),
+  # so it is asserted here: if it ever stops being true this test fails, and
+  # the claim can be made again on purpose rather than by accident.
+  d <- np_normalize(np_test_frame(
+    street = c("70-11 150TH STREET", "70 11 150TH STREET",
+               "875-A ISLAND DRIVE", "875 A ISLAND DRIVE")))
+  expect_equal(d$street_num, c("7011", "70", "875A", "875"))
+  expect_false(identical(d$street_num[1], d$street_num[2]))
+  expect_false(identical(d$street_num[3], d$street_num[4]))
+  expect_false(identical(d$street_key[1], d$street_key[2]))
+
+  # The compass carve-out is the one place the two spellings agree -- and they
+  # agree on street_key too, so street_num buys a consumer nothing even there.
+  e <- np_normalize(np_test_frame(street = c("1002-E SENECA ST", "1002 E SENECA ST")))
+  expect_equal(e$street_num, c("1002", "1002"))
+  expect_equal(e$street_key[1], e$street_key[2])
+})
+
 test_that("a lone compass letter is a direction, not a house number (#16)", {
   # 0.1.7 joined "1002-E SENECA ST" into "1002E SENECA ST": a house number that
   # does not exist, keyed apart from the "1002 E SENECA ST" spelling filed for

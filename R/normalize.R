@@ -911,14 +911,25 @@ np_name_rules <- function() {
 # and "PO BOX 363-5" keep theirs, and the part after the hyphen is restricted to
 # digits or a single letter so "123-MAIN ST" cannot be glued into one token.
 #
-# Doing it in each consumer was measured and rejected: keying on
-# gsub(" ", "", street_key) adds 2,278 merges over the same reference of which
-# 972 (42.67%) join rows whose street_num disagrees -- "4780 1 55 N" with
-# "47801 55 N" -- and only 410 are this case.
+# Doing it in each consumer was measured in pfmatch: keying on
+# gsub(" ", "", street_key) adds 1,886 merges of which 322 (17.07%) join rows
+# whose street_num disagrees -- "4780 1 55 N" with "47801 55 N". That is
+# pfmatch's figure over its own 3,880,431-row augmented reference, the one #16
+# was reported from, re-measured under this signature (pfmatch
+# dev/ADDR-KEY-SPELLINGS-20261102.log); it is not a second measurement taken
+# here. An earlier draft of this comment quoted 2,278 merges and 42.67% from
+# the same script under 0.1.6, and re-measuring moved it the AWKWARD way: the
+# join had already done part of that key's work on the hyphenated spellings, so
+# 1,886 with 322 suspect is a better trade than 2,278 with 972. That figure
+# therefore no longer carries the rejection on its own -- it says a blanket
+# space strip is less bad than it was, not that it is safe. What carries the
+# rejection is the next paragraph, measured here over 22,026,817 rows.
 #
 # JOINING THE SPACED SPELLING TOO was measured and rejected for the same
 # reason, narrowly as well as bluntly. Allowing a space where this pattern
-# wants a hyphen closes 1,156 of matchdb's 1,490 EIN-level address splits and
+# wants a hyphen closes 1,156 of the 1,490 EIN-level address splits counted
+# over the strings that run could move (the join's own total is 1,496; the
+# narrower candidate set misses 127 strings and so six groups) and
 # moves 92,797 further strings, which are street names: "5001 11 MILE RD" to
 # "500111 MILE RD" (11 Mile Road), "712 H STREET NE" to "712H ST NE" (H Street
 # NE), "17398 M 86" to "17398M86" (M-86), "964 60 RD" to "96460 RD". Nothing in
